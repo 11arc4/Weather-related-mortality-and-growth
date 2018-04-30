@@ -23,6 +23,11 @@ dat$ThermoReg[which(dat$Age<=8 & dat$Age>6)] <- "Intermediate"
 dat$ThermoReg[which(dat$Age>8)] <- "Endotherm"
 dat$ThermoReg <- as.factor(dat$ThermoReg)
 
+#Create a precipitation T/F 
+dat$TotalPrecip2 <- 0
+dat$TotalPrecip2[dat$TotalPrecip>0]<- 1
+
+
 #Take all the airstrip grids out because those nestlings aren't a part of your 
 dat2 <- dat %>% filter (substring(NestID, 1,2)!="AG")
 
@@ -31,78 +36,75 @@ dat2 <- dat %>% filter (substring(NestID, 1,2)!="AG")
 #Get the data ready for the model by making a subset of the data that includes
 #only nestling measurements where we know everything necessary to put into the
 #model
+dat3 <- dat2 %>% filter (!is.na(Mass) & !is.na(Age) & !is.na(ThermoReg) & Age<=12 )
 
 
-
-dat3 <- dat2 %>% filter (!is.na(Mass) & !is.na(Age) & !is.na(ThermoReg) & FledgeSuccess>0 )
-dat3$AlivetoEnd<- "NO"
-
-for (i  in 1:nrow(dat3)){
-  ID <- dat3$NestlingID[i]
-  any(dat3$NestlingID==ID & dat3$Age>=12)
-  dat3$AlivetoEnd <- "YES"
-}
-
-NoSelection <- dat3 %>% filter(AlivetoEnd=="YES" & Age<13)
-
-ggplot(NoSelection, aes(x=Age, y=Mass))+
+ggplot(dat3, aes(x=Age, y=Mass))+
   geom_point()+
-  #geom_smooth(method="loess")+
-  stat_smooth(method="lm", formula= y~poly(x, 3))
-
-NoSelection$fAge <- factor(NoSelection$Age)
-vf <- varIdent(form= ! 1 | fAge)
-mod3 <- gls(Mass ~ poly(Age, degree=3),weights=varIdent(form = !1|fAge), data=NoSelection)
-plot(mod3) #this looks quite not normal. 
-hist(resid(mod3)) #this doesn't look horrible but also isn't good
-shapiro.test(resid(mod3))
-plot(resid(mod3)~NoSelection$Age) #We are a fair bit better at predicting for the youngest nestlings for a polynomial.
-
-
-mod2 <- lm(Mass ~ poly(Age, degree=2), data=NoSelection)
-mod1 <- lm(Mass ~ poly(Age, degree=1), data=NoSelection)
-
-
-AICc(mod1, mod2, mod3)
-#3rd order polynomial for the win!
+  stat_smooth(method="lm", formula=y~poly(x, 3))+
+  geom_smooth(method="lm")
+#Either way could fit pretty well. 
 
 
 
-#There are pretty serious issues with including both the polynomial and the random effects. It really doesn't want to converge, even excluding nestling effects. 
-mod <- lmer(Mass ~ poly(Age, degree=3) + 1|NestID, data=dat3)
-plot(mod)
-summary(mod)
+M.lm <- gls(Mass ~ poly(Age, 3), data=dat3)
 
-mod <- lmer(Mass ~ Age+ I(Age)^2 + 1|NestID/NestlingID, data=dat3)
-mod <- lmer(Mass ~ Age + 1|NestID/NestlingID, data=dat3)
+library(nlme)
+M.gls1 <- gls(Mass ~ poly(Age, 3), weights = varFixed(~Age), data=dat3)
+M.gls2 <- gls(Mass ~ poly(Age, 3), weights = varIdent(~1|as.factor(Age)), data=dat3)
+
+AICc(M.lm, M.gls1, M.gls2)
+
+anova(M.lm, M.gls1, M.gls2)
+#The clear winnter is M.gls1--- we want variance to increase with age!!!
+
+summary(M.gls1)
+plot(M.lm)
+plot(M.gls1)
+plot(M.gls2)
+
+#Should we use the polynomial or a linear? 
+
+M.gls1_3 <- gls(Mass ~ poly(Age, 3), weights = varFixed(~Age), data=dat3)
+M.gls1_2 <- gls(Mass ~ poly(Age, 2), weights = varFixed(~Age), data=dat3)
+M.gls1_1 <- gls(Mass ~ poly(Age, 1), weights = varFixed(~Age), data=dat3)
+AICc(M.gls1_1, M.gls1_2, M.gls1_3)
+#OK We will use the 3rd order
 
 
+mamMass <- gls(Mass ~ poly(Age, 3), weights = varFixed(~Age), data=dat3)
 
-
-#What if we model the residual of each of those things? 
-
-dat3$ResidMass <- resid(mod3) #residual mass from the 3rd order polynomial
+dat3$ResidMass <- resid(mamMass)
 
 
 #Do you tend to have lower mass when there was lousy weather 2 days prior, and
 #does that effect depend on your thermoregulatory strategy?
 ggplot(dat3, aes(y=ResidMass, x=MeanTemp))+
   geom_point()+
-  geom_smooth()+
+  geom_smooth(method="lm")+
   facet_grid(~ThermoReg)
 
-mod_mass <- lmer(ResidMass~MeanTemp + 1|NestID/NestlingID, data=dat3)
-plot(mod_mass)
-hist(resid(mod_mass))
-plot(resid(mod_mass)~dat3$NestlingID) 
-plot(resid(mod_mass)~dat3$NestID) 
-plot(resid(mod_mass)~dat3$MeanTemp) 
-#Looks like it fits ok
 
-summary(mod_mass)
-#We should drop nestling random effect
+ggplot(dat3, aes(y=ResidMass, x=MaxTemp))+
+  geom_point()+
+  geom_smooth(method="lm")+
+  facet_grid(~ThermoReg)
+
+ggplot(dat3, aes(y=ResidMass, x=meanwindspeed))+
+  geom_point()+
+  geom_line(aes(color=NestlingID), alpha=0.6, show.legend = F)
+  geom_smooth(method="lm")+
+  facet_grid(~ThermoReg)
+
+ggplot(dat3, aes(y=ResidMass, x=as.factor(TotalPrecip2)))+
+  geom_point()+
+  #geom_smooth(method="lm")+
+  facet_grid(~ThermoReg)
+
+
 
 mod_mass <- lm(ResidMass ~ MaxTemp*ThermoReg , data=dat3)
+plot(mod_mass)
 summary(mod_mass)
 
 ggplot(dat3, aes(x=MaxTemp, y=ResidMass))+
