@@ -90,7 +90,7 @@ mam_maxtemp <- coxme( Surv(time=Time1, time2=Time2, Dead) ~  MaxTemp*ResidMass1 
               data = dat3)
 summary(mam_maxtemp)
 
-AICc(mam)
+AICc(mam_)
 AICc(mod2)
 
 
@@ -186,14 +186,88 @@ dredge(mod1)
 #still just within 2 delta AICc. ALSo the previous model won't converge so
 #probabl isn't as good as it seems.
 
-mam_PC <- coxme(Surv(time=Time1, time2=Time2, Dead) ~ ResidMass1 + PC1 + PC2 + (1|NestID), na.action = "na.fail",
+mam_PC <- coxme(Surv(time=Time1, time2=Time2, Dead) ~ ThermoReg+ResidMass1+ PC2 + PC1  + (1|NestID), na.action = "na.fail",
                 data = dat3)
 summary(mam_PC)
 #Increasing either PC1 or PC2 increases mortality risk. Increasing residual mass
 #decreases risk but to a comparatively small extent.
 
 
-AICcTable <- AICc(mam_maxtemp, mam_meanTemp, mam_meanwindspeed, mam_rain, mam_PC) %>% arrange(AICc)
+AICcTable <- AICc(mam_maxtemp, mam_meanTemp, mam_meanwindspeed, mam_rain, mam_PC) 
 AICcTable$delta <- AICcTable$AICc - min(AICcTable$AICc)
 AICcTable
 #PCs are easily the best predictor. 
+
+
+
+
+summary(mam_PC)
+#Higher mass makes you less likely to die, but not a very strong effect in the
+#face of PC1 and PC2 which are insanely strong!
+
+
+
+
+dat3$Predicted[dat3$ThermoReg=="Poikilotherm"] <- dat3$ResidMass1[dat3$ThermoReg=="Poikilotherm"]*coef(mam_PC)[2]+ dat3$PC2[dat3$ThermoReg=="Poikilotherm"]*coef(mam_PC)[3] + dat3$PC1[dat3$ThermoReg=="Poikilotherm"]*coef(mam_PC)[4]
+dat3$Predicted[dat3$ThermoReg=="Intermediate"] <- coef(mam_PC)[1] + dat3$ResidMass1[dat3$ThermoReg=="Intermediate"]*coef(mam_PC)[2]+ dat3$PC2[dat3$ThermoReg=="Intermediate"]*coef(mam_PC)[3] + dat3$PC1[dat3$ThermoReg=="Intermediate"]*coef(mam_PC)[4]
+
+
+ggplot(dat3, aes(x=Time1, y=Predicted, group=ThermoReg))+
+  geom_point(aes(color=ResidMass1), alpha=0.5)+
+  labs(x="Julian Date", y="Predicted Mortality Risk", color="Residual Mass")
+  
+
+
+#What if I make 3 plots, each holding a different all but one of the varibales at their mean?
+#Resid Mass
+dat3%>% group_by(ThermoReg) %>% summarize(min(ResidMass1), 
+                                          max(ResidMass1))
+
+newdata1 <- data.frame(ThermoReg= c(rep("Poikilotherm", 40), c(rep("Intermediate", 40))), 
+                      ResidMass1=c(seq(-6.34, 6.16, length.out = 40), seq(-5.59, 6.11, length.out = 40)), 
+                      PC1=mean(dat3$PC1), 
+                      PC2=mean(dat3$PC2), 
+                      Predicted=NA)
+newdata1$Predicted[newdata1$ThermoReg=="Poikilotherm"] <- newdata1$ResidMass1[newdata1$ThermoReg=="Poikilotherm"]*coef(mam_PC)[2]+ newdata1$PC2[newdata1$ThermoReg=="Poikilotherm"]*coef(mam_PC)[3] + newdata1$PC1[newdata1$ThermoReg=="Poikilotherm"]*coef(mam_PC)[4]
+newdata1$Predicted[newdata1$ThermoReg=="Intermediate"] <- coef(mam_PC)[1] + newdata1$ResidMass1[newdata1$ThermoReg=="Intermediate"]*coef(mam_PC)[2]+ newdata1$PC2[newdata1$ThermoReg=="Intermediate"]*coef(mam_PC)[3] + newdata1$PC1[newdata1$ThermoReg=="Intermediate"]*coef(mam_PC)[4]
+
+ggplot(newdata1, aes(x=ResidMass1, y=Predicted, color=ThermoReg))+
+  geom_line()+
+  labs(x="Residual Mass", y="Predicted Mortality Risk", color="")+
+  ggthemes::theme_few(base_family = "serif", base_size = 16)
+
+#PC1
+dat3%>% group_by(ThermoReg) %>% summarize(min(PC1), 
+                                          max(PC1))
+newdata2 <- data.frame(ThermoReg= c(rep("Poikilotherm", 40), c(rep("Intermediate", 40))), 
+                       ResidMass1=mean(dat3$ResidMass1), 
+                       PC1=c(seq(-3.24, 3.03, length.out = 40),seq(-2.75, 4.67, length.out = 40)), 
+                       PC2=mean(dat3$PC2), 
+                       Predicted=NA)
+newdata2$Predicted[newdata2$ThermoReg=="Poikilotherm"] <- newdata2$ResidMass1[newdata2$ThermoReg=="Poikilotherm"]*coef(mam_PC)[2]+ newdata2$PC2[newdata2$ThermoReg=="Poikilotherm"]*coef(mam_PC)[3] + newdata2$PC1[newdata2$ThermoReg=="Poikilotherm"]*coef(mam_PC)[4]
+newdata2$Predicted[newdata2$ThermoReg=="Intermediate"] <- coef(mam_PC)[1] + newdata2$ResidMass1[newdata2$ThermoReg=="Intermediate"]*coef(mam_PC)[2]+ newdata2$PC2[newdata2$ThermoReg=="Intermediate"]*coef(mam_PC)[3] + newdata2$PC1[newdata2$ThermoReg=="Intermediate"]*coef(mam_PC)[4]
+
+ggplot(newdata2, aes(x=PC1, y=Predicted, color=ThermoReg))+
+  geom_line()+
+  labs(x="PC1", y="Predicted Mortality Risk", color="")+
+  ggthemes::theme_few(base_family = "serif", base_size = 16)
+#PC1 is hugely influential
+
+#PC2
+dat3%>% group_by(ThermoReg) %>% summarize(min(PC2), 
+                                          max(PC2))
+newdata3 <- data.frame(ThermoReg= c(rep("Poikilotherm", 40), c(rep("Intermediate", 40))), 
+                       ResidMass1=mean(dat3$ResidMass1), 
+                       PC2=c(seq(-1.67, 3.5, length.out = 40),seq(-5.27, 3.5, length.out = 40)), 
+                       PC1=mean(dat3$PC1), 
+                       Predicted=NA)
+newdata3$Predicted[newdata3$ThermoReg=="Poikilotherm"] <- newdata3$ResidMass1[newdata3$ThermoReg=="Poikilotherm"]*coef(mam_PC)[2]+ newdata3$PC2[newdata3$ThermoReg=="Poikilotherm"]*coef(mam_PC)[3] + newdata3$PC1[newdata3$ThermoReg=="Poikilotherm"]*coef(mam_PC)[4]
+newdata3$Predicted[newdata3$ThermoReg=="Intermediate"] <- coef(mam_PC)[1] + newdata3$ResidMass1[newdata3$ThermoReg=="Intermediate"]*coef(mam_PC)[2]+ newdata3$PC2[newdata3$ThermoReg=="Intermediate"]*coef(mam_PC)[3] + newdata3$PC1[newdata3$ThermoReg=="Intermediate"]*coef(mam_PC)[4]
+
+ggplot(newdata3, aes(x=PC2, y=Predicted, color=ThermoReg))+
+  geom_line()+
+  labs(x="PC2", y="Predicted Mortality Risk", color="")+
+  ggthemes::theme_few(base_family = "serif", base_size = 16)
+
+
+

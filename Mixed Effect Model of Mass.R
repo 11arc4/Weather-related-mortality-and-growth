@@ -263,6 +263,48 @@ mam <- mam_PC
 
 
 
+###########################
+###Let's try to make an informative plot about what happens to residual mass as PC1 and PC2 change. 
+dat3%>% group_by(ThermoReg) %>% summarise(min(PC1), max(PC2) )
+newdata<- data.frame(ThermoReg=factor(c(rep("Poikilotherm", 60), rep("Intermediate", 60), rep("Endotherm", 60)), levels=c("Poikilotherm", "Intermediate", "Endotherm")), 
+                     PC1=c(rep(seq(-3.76, 3.37, length.out = 30), 2), rep(seq(-3.76, 1.93, length.out = 30), 2), rep(seq(-4.22, 1.93, length.out = 30), 2)), 
+                     PC2=as.factor(rep(c(rep(-2.35, 30), rep(3.7, 30)), 3)), 
+                     Predicted=NA, 
+                     lcl=NA, 
+                     ucl=NA)
+
+#newdata$Predicted <- predict(mam, newdata,re.form=~0) #level=0 tells us to ignore the random effect and just pick the mean nest!
+library(boot)
+b3 <- bootMer(mam,FUN=function(x) predict(x,newdata=newdata,re.form=~0),
+              ## re.form=~0 is equivalent to use.u=FALSE
+              nsim=100,seed=101)
+#### Confidence and prediction intervals for *unobserved* levels
+bootsum <- function(x,ext="_1") {
+  d <- data.frame(apply(x$t,2,
+                        function(x) c(mean(x),quantile(x,c(0.025,0.975)))))
+  d <- setNames(d,paste0(c("bpred","lwr","upr"),ext))
+  return(d)
+}
+newdata[,4:6]<- t(bootsum(b3,"_3"))
+
+ThermoRegLabels <- c(`Poikilotherm`= "Poikilotherm", 
+                     `Intermediate`= "Intermediate", 
+                     `Endotherm`= "Homeotherm")
 
 
+ggplot()+
+  #geom_point()+
+  geom_line(data=newdata, aes(x=PC1, y=Predicted, color=PC2))+
+  geom_ribbon(data=newdata, aes(x=PC1, ymin=lcl, ymax=ucl, fill=PC2), alpha=0.3)+
+  facet_grid(~ThermoReg, labeller = as_labeller(ThermoRegLabels) )+
+  labs(x="PC1", y="Residual mass", color="PC2", fill="PC2")+
+  ggthemes::theme_few(base_family = "serif", base_size = 16)
 
+#PC1: higher values mean lower temperatures, and less wind
+#PC2: higher values mean lower temperatures, more wind, and a bit of rain
+
+#Poikilotherms seem to be affected by PC2 more strongly than intermediates or homeotherms. 
+
+#Looks like endotherms are behaving like we expect but the intermediates and
+#poikilotherms arent. Perhaps they get got more by the wind than by the
+#temperature?
