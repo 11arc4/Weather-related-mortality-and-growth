@@ -2,8 +2,9 @@
 library(ggplot2) #for making plots
 library(dplyr) #for subsetting the data
 library(lme4) #for doing the mixed effect models
-library(car) # for testing significance
+library(nlme)
 
+###############
 #Load in the data
 dat <- read.csv("file:///C:/Users/11arc/Documents/Kennedy's 537 Thesis Project/Nestling and Weather Data.csv", as.is=T)
 dat <- read.csv("TRESDATAwithweather.csv")
@@ -48,8 +49,6 @@ ggplot(dat3, aes(x=Age, y=Mass))+
 
 
 M.lm <- gls(Mass ~ poly(Age, 3), data=dat3)
-
-library(nlme)
 M.gls1 <- gls(Mass ~ poly(Age, 3), weights = varFixed(~Age), data=dat3)
 M.gls2 <- gls(Mass ~ poly(Age, 3), weights = varIdent(~1|as.factor(Age)), data=dat3)
 
@@ -77,6 +76,27 @@ mamMass <- gls(Mass ~ poly(Age, 3), weights = varFixed(~Age), data=dat3)
 dat3$ResidMass <- resid(mamMass)
 
 
+####Calculate PC values for weather characteristics. 
+
+weatherVar2 <- dat3[,c(20:22,26:29)] 
+#we are going to use all the weather variables because that's what we did in the
+#other analyses and it's important to be consistant, even thoguh the results are
+#no different either way
+
+weather.pca <- prcomp(weatherVar2, 
+                      center=T, 
+                      scale=T)
+
+plot(weather.pca, type="lines")
+summary(weather.pca)
+#By using weather PCs 1 and 2 we can capture 72% of the weather variation. We will use those 2. 
+dat3$PC1 <- predict(weather.pca, dat3[,c(20:22,26:29)])[,1]
+dat3$PC2 <- predict(weather.pca, dat3[,c(20:22,26:29)])[,2]
+
+
+
+
+########################################################################
 #Do you tend to have lower mass when there was lousy weather 2 days prior, and
 #does that effect depend on your thermoregulatory strategy?
 ggplot(dat3, aes(y=ResidMass, x=MeanTemp))+
@@ -102,13 +122,147 @@ ggplot(dat3, aes(y=ResidMass, x=as.factor(TotalPrecip2)))+
   facet_grid(~ThermoReg)
 
 
+##########################################################
+#############Does max temperature perdict residual mass?
+mod1 <- lmer(ResidMass ~ MaxTemp*ThermoReg + (1|NestID/NestlingID), data=dat3, REML=FALSE)
+plot(mod1) #this is OK
+hist(resid(mod1)) #looks pretty good but there is a bit of a tail. 
+shapiro.test(resid(mod1)) #this very conservative test says we aren't fitting. I'm thinking I'll ignore it for now but maybe will need to deal with this. 
+plot(resid(mod1)~dat3$MaxTemp)
+plot(resid(mod1)~dat3$ThermoReg)
+plot(resid(mod1)~dat3$NestID)
 
-mod_mass <- lm(ResidMass ~ MaxTemp*ThermoReg , data=dat3)
-plot(mod_mass)
-summary(mod_mass)
 
-ggplot(dat3, aes(x=MaxTemp, y=ResidMass))+
-  geom_point()+
-  geom_smooth(method="lm")+
-  facet_grid(~ThermoReg)
+summary(mod1)
+#Don't need nestling ID as a random effect
+
+mod2 <- lmer(ResidMass ~ MaxTemp*ThermoReg + (1|NestID), data=dat3, REML=FALSE)
+summary(mod2)
+#Do need nest ID as a random effect
+
+dredge(mod2)
+
+mam_maxtemp <- lmer(ResidMass ~ MaxTemp*ThermoReg + (1|NestID), data=dat3, REML=FALSE)
+summary(mam_maxtemp)
+#Poikilotherm's mass is more effected by max temp than intermediates or
+#endotherms. HIgher max temp= lower residual mass, particulaly for
+#poikilotherms-- likely due to weak selection.
+
+
+##########################################################
+#############Does mean temperature perdict residual mass?
+mod1 <- lmer(ResidMass ~ MeanTemp*ThermoReg + (1|NestID/NestlingID), data=dat3, REML=FALSE)
+
+plot(mod1) #this is OK
+hist(resid(mod1)) #looks pretty good but there is a bit of a tail. 
+shapiro.test(resid(mod1)) #this very conservative test says we aren't fitting. I'm thinking I'll ignore it for now but maybe will need to deal with this. 
+plot(resid(mod1)~dat3$MeanTemp)
+plot(resid(mod1)~dat3$ThermoReg)
+plot(resid(mod1)~dat3$NestID)
+
+
+summary(mod1)
+#Don't need nestling ID
+
+mod2 <- lmer(ResidMass ~ MeanTemp*ThermoReg + (1|NestID), data=dat3, REML=FALSE)
+summary(mod2)
+#Should keep Nest ID as a random effect
+
+dredge(mod2)
+#Full model is easily the best predictor
+
+mam_meantemp <- lmer(ResidMass ~ MeanTemp*ThermoReg + (1|NestID), data=dat3, REML=FALSE)
+summary(mam_meantemp)
+#Increasing mean temp increases body mass for endotherms, doesn't do anything
+#for intermediates, and decreases it for poikilotherms.
+
+
+##########################################################
+#############Does whether is rains or not predict residual mass?
+mod1 <- lmer(ResidMass ~ TotalPrecip2*ThermoReg + (1|NestID/NestlingID), data=dat3, REML=FALSE)
+plot(mod1) #this is OK
+hist(resid(mod1)) #looks pretty good but there is a bit of a tail. 
+shapiro.test(resid(mod1)) #this very conservative test says we aren't fitting. I'm thinking I'll ignore it for now but maybe will need to deal with this. 
+plot(resid(mod1)~dat3$TotalPrecip2)
+plot(resid(mod1)~dat3$ThermoReg)
+plot(resid(mod1)~dat3$NestID)
+
+summary(mod1)
+#Can drop the random nestling ID effect
+
+mod2 <- lmer(ResidMass ~ TotalPrecip2*ThermoReg + (1|NestID), data=dat3, REML=FALSE)
+summary(mod2)
+#Should keep the nestID effect
+
+dredge(mod2)
+#Best model is the full model. However, with delta=1.97 is the much simpler just total precipitation
+
+mam_rain <- lmer(ResidMass ~ TotalPrecip2*ThermoReg + (1|NestID), data=dat3, REML=FALSE)
+summary(mam_rain)
+
+##########################################################
+#############Does meanwindspeed predict residual mass?
+mod1 <- lmer(ResidMass ~ meanwindspeed*ThermoReg + (1|NestID/NestlingID), data=dat3, REML=FALSE)
+plot(mod1) #this is OK
+hist(resid(mod1)) #looks pretty good but there is a bit of a tail. 
+shapiro.test(resid(mod1)) #this very conservative test says we aren't fitting. I'm thinking I'll ignore it for now but maybe will need to deal with this. 
+plot(resid(mod1)~dat3$meanwindspeed)
+plot(resid(mod1)~dat3$ThermoReg)
+plot(resid(mod1)~dat3$NestID)
+
+summary(mod1)
+#Good to drop the nestling ID random effect
+
+mod2 <- lmer(ResidMass ~ meanwindspeed*ThermoReg + (1|NestID), data=dat3, REML=FALSE)
+summary(mod2)
+#need to keep the NestID random effect
+
+dredge(mod2)
+#I'm going with the top model but the next best is only 1.17 away and doesn't include thermoreg at all. 
+
+mam_windspeed <- lmer(ResidMass ~ meanwindspeed*ThermoReg + (1|NestID), data=dat3, REML=FALSE)
+summary(mam_windspeed)
+
+
+########################################################## Does the combination
+#############of weather variables (PC1 and PC2) predict residual mass better
+#############than any one alone?
+mod1 <- lmer(ResidMass ~ PC1*ThermoReg+ PC2*ThermoReg + (1|NestID/NestlingID), data=dat3, REML=FALSE)
+plot(mod1)
+hist(resid(mod1)) #looks pretty good but there is a bit of a tail. 
+shapiro.test(resid(mod1)) #this very conservative test says we aren't fitting. I'm thinking I'll ignore it for now but maybe will need to deal with this. 
+plot(resid(mod1)~dat3$PC1)
+plot(resid(mod1)~dat3$PC2)
+plot(resid(mod1)~dat3$ThermoReg)
+plot(resid(mod1)~dat3$NestID)
+
+
+summary(mod1)
+#Should drop the nestling ID
+
+mod2 <- lmer(ResidMass ~ PC1*ThermoReg+ PC2*ThermoReg + (1|NestID), data=dat3, REML=FALSE)
+summary(mod2)
+#Need to keep the NestID
+
+dredge(mod2)
+
+#Full model is the best by a long shot
+
+mam_PC <- lmer(ResidMass ~ PC1*ThermoReg+ PC2*ThermoReg + (1|NestID), data=dat3, REML=FALSE)
+summary(mam_PC)
+
+
+AICcTable <- AICc(mam_maxtemp, mam_meantemp, mam_rain, mam_windspeed, mam_PC) 
+AICcTable$delta <- AICcTable$AICc-min(AICcTable$AICc) 
+AICcTable
+
+#PC is the best predictor of Mass
+
+
+mam <- mam_PC
+
+
+
+
+
 
