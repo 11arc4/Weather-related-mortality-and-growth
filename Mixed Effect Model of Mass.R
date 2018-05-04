@@ -77,8 +77,10 @@ dat3$ResidMass <- resid(mamMass)
 
 
 ####Calculate PC values for weather characteristics. 
+#We want to calculate PC values by day, not counting duplicated days because they had the same 
 
-weatherVar2 <- dat3[,c(20:22,26:29)] 
+dat4<- dat3 %>% group_by(JulianDate) %>% filter(row_number() == 1)
+weatherVar2 <- dat4[,c(20:22,26:29)]  
 #we are going to use all the weather variables because that's what we did in the
 #other analyses and it's important to be consistant, even thoguh the results are
 #no different either way
@@ -90,6 +92,7 @@ weather.pca <- prcomp(weatherVar2,
 plot(weather.pca, type="lines")
 summary(weather.pca)
 #By using weather PCs 1 and 2 we can capture 72% of the weather variation. We will use those 2. 
+saveRDS(weather.pca, file="~/Masters Thesis Project/Weather determined growth and mortality paper/Weather Analysis/Weather-related-mortality-and-growth/WeatherPCA.rds")
 dat3$PC1 <- predict(weather.pca, dat3[,c(20:22,26:29)])[,1]
 dat3$PC2 <- predict(weather.pca, dat3[,c(20:22,26:29)])[,2]
 
@@ -300,8 +303,10 @@ ggplot()+
   labs(x="PC1", y="Residual mass", color="PC2", fill="PC2")+
   ggthemes::theme_few(base_family = "serif", base_size = 16)
 
+ggsave(filename="~/Masters Thesis Project/Weather determined growth and mortality paper/Plots/Resdidual mass with PC1.jpeg", units="in", width=8, height=4, device="jpeg")
+
 #PC1: higher values mean lower temperatures, and less wind
-#PC2: higher values mean lower temperatures, more wind, and a bit of rain
+#PC2: higher values mean more rain and more wind
 
 #Poikilotherms seem to be affected by PC2 more strongly than intermediates or homeotherms. 
 
