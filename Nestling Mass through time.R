@@ -43,16 +43,16 @@ ggplot(dat3, aes(x=age, y=mass))+
   geom_point()+
   geom_smooth(method="lm", formula=y~x)
 
-dat3$year2 <- (dat3$year-2017)/10
+dat3$year2 <- (dat3$year-1977)/10
 dat3$age2 <- dat3$age-10
 dat3$age2 <- dat3$age-15
 
 
-mod <- lmer(mass~age2*year2 + (1|nestID), data=dat3, na.action="na.fail")
+mod <- lmer(mass~age*year2 + (1|nestID), data=dat3, na.action="na.fail")
 
 plot(mod)
 hist(resid(mod))
-plot(resid(mod)~dat3$age2)
+plot(resid(mod)~dat3$age)
 plot(resid(mod)~dat3$year2)
 #This model looks really good. 
 
@@ -64,7 +64,7 @@ anova(mod, test="F")
 
 #We should keep all terms
 
-mam <- lmer(mass~age2*year2 + (1|nestID), data=dat3, na.action="na.fail")
+mam <- lmer(mass~age*year2 + (1|nestID), data=dat3, na.action="na.fail")
 summary(mam)
 
 #We'll center age at 10 and 15
@@ -106,14 +106,16 @@ newdata[, 5:7] <- bootsum(b3,"_3")
 newdata$age <- as.factor(newdata$age)
 
 ggplot(newdata, aes(x=year))+
-  geom_line(aes(y=predicted, color=age))+
   geom_ribbon(aes( ymin=lcl, ymax=ucl, fill=age), alpha=0.3)+
-  labs(y="Mass", x="Year", color="Age (days)", fill="Age (days)")+ 
+  geom_line(aes(y=predicted, linetype=age), color="black")+
+  labs(y="Body mass (g)", x="Year", linetype="Age (days)", fill="Age (days)")+ 
   xlim(1975,2017)+
-  scale_fill_manual(values=c("steelblue","orchid3"))+
-  scale_color_manual(values=c("steelblue","orchid3"))+
+  scale_fill_grey()+
+  scale_color_grey()+
   #geom_point(data=dat3 %>% filter(age==15 | age==10), aes(x=year, y=mass, color= factor(age)), alpha=0.5)+
-  theme_classic(base_size = 16)
+  ggthemes::theme_few(base_size = 16, base_family="serif")+
+  theme(legend.position = c(0.85, 0.8))
+ggsave(filename="~/Masters Thesis Project/Weather determined growth and mortality paper/Plots/Nestling mass through time.jpeg", units="in", width=5, height=4, device="jpeg")
 
 
 

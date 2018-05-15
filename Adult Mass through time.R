@@ -104,8 +104,8 @@ summary(mam_F)
 anova(mam_F)
 
 
-newdata_F <- data.frame(year=c(rep(1983, 30), rep(2017, 30)),
-                        year2=c(rep(1983-1974, 30), rep(2017-1974, 30)),
+newdata_F <- data.frame(year=c(rep(1990, 30), rep(2010, 30)), 
+                        year2=c(rep(1990-1974, 30), rep(2010-1974, 30)),
                         diff=seq(0, 29, 1), 
                         Period=factor("Incubation", levels=c("Incubation", "Nestling")), 
                         predicted=NA, 
@@ -127,10 +127,20 @@ bootsum <- function(x,ext="_1") {
 newdata_F[,5:7]<- t(bootsum(b3,"_3"))
 
 
-ggplot()+
-  geom_line(data=newdata_F, aes(x=diff, y=predicted, color=factor(year)))+
+PanelA <- ggplot()+
   geom_ribbon(data=newdata_F, aes(x=diff, ymin=lcl, ymax=ucl, fill=factor(year)), alpha=0.4)+
-  geom_vline(xintercept=14, linetype="dashed")
+  geom_line(data=newdata_F, aes(x=diff, y=predicted, linetype=factor(year)), color="black")+
+  geom_vline(xintercept=14, linetype="dashed")+
+  scale_fill_grey()+
+  scale_color_grey()+
+  xlim(0,30)+
+  ylim(19,22.7)+
+  geom_text(aes(x=28, y=22.5, label="Female"), family="serif", size=6)+
+  labs(x=" ", y="Body mass (g)", linetype="", fill="")+
+  ggthemes::theme_few(base_size = 16, base_family = "serif")+
+  theme(legend.position = c(0.2, 0.2))
+
+
 
 ##################
 #Now let's do the males. 
@@ -162,8 +172,8 @@ summary(mam_M)
 anova(mam_M)
 
 
-newdata_M <- data.frame(year=c(rep(1991, 12), rep(2017, 12)), 
-                        year2=c(rep(1991-1974, 12), rep(2017-1974, 12)),
+newdata_M <- data.frame(year=c(rep(1990, 12), rep(2010, 12)), 
+                        year2=c(rep(1990-1974, 12), rep(2010-1974, 12)),
                         diff=rep(seq(18, 29, 1), 2), 
                         Period=factor("Incubation", levels=c("Incubation", "Nestling")), 
                         predicted=NA, 
@@ -183,29 +193,39 @@ bootsum <- function(x,ext="_1") {
 newdata_M[,5:7]<- t(bootsum(b3,"_3"))
 
 
+update_geom_defaults("text", list(colour = "grey20", family = theme_get()$text$family))
+PanelB <- ggplot()+
+  geom_ribbon(data=newdata_M, aes(x=diff, ymin=lcl, ymax=ucl, fill=factor(year)), alpha=0.4)+
+  geom_line(data=newdata_M, aes(x=diff, y=predicted, linetype=factor(year)), color="black")+
+  scale_fill_grey()+
+  scale_color_grey()+
+  geom_vline(xintercept=14, linetype="dashed")+
+  xlim(0, 30)+
+  ylim(19,22.7)+
+  geom_text(aes(x=28, y=22.5, label="Male"), family="serif", size=6)+
+  labs(x="Time since laying began", y="Body mass (g)", linetype="", fill="")+
+  ggthemes::theme_few(base_size = 16, base_family = "serif")+
+  theme(legend.position = c(0.2, 0.2))
 
-ggplot()+
-  geom_line(data=newdata_M, aes(x=diff, y=predicted, color=factor(year)))+
-  geom_ribbon(data=newdata_M, aes(x=diff, ymin=lcl, ymax=ucl, fill=factor(year)), alpha=0.4)
+PanelB
+PanelA
 
-
-
-
-
-
+cowplot::plot_grid(PanelA, PanelB, nrow=2, ncol=1, labels = c("a", "b"))
+ggsave(filename="~/Masters Thesis Project/Weather determined growth and mortality paper/Plots/Adult mass through time.jpeg", units="in", width=5, height=8, device="jpeg")
 
 
 
 
 #Has wing chord also decreased? Because if it has they're just smaller, not in poorer condition
-adult4 <- adult %>% filter((sex=="M" | sex=="F") & !is.na(diff) & !is.na(wingChord) & diff>-5 & diff<30)
+adult4 <- adult %>% filter((sex=="M" | sex=="F") & !is.na(diff) & !is.na(wingChord) & wingChord>80 & wingChord<135 & diff>-5 & diff<30)
 
-mod2 <- lm(wingChord ~ sex*year, data=adult4, na.action="na.fail")
+mod2 <- lmer(wingChord ~ sex*year + (1|band), data=adult4, na.action="na.fail")
 plot(mod2)
+shapiro.test(resid(mod2))
 hist(resid(mod2))
 plot(resid(mod2)~adult4$sex)
 plot(resid(mod2)~adult4$year)
-
+summary(mod2) #Need to retain band ID-- you are measured multiple times and you'll be about the same
 dredge(mod2)
 anova(mod2, test="F")
 mam_wing <- lm(wingChord ~ sex, data=adult4, na.action="na.fail")
