@@ -63,7 +63,7 @@ options(na.action="na.fail")
 dredge(mod2)
 #there is a clear winner here. 
 
-mam_maxtemp <- coxme( Surv(time=Time1, time2=Time2, Dead) ~  MaxTemp3day+ ThermoReg + ResidMass1  +ThermoReg + (1|NestID), na.action = "na.fail",
+mam_maxtemp <- coxme( Surv(time=Time1, time2=Time2, Dead) ~  MaxTemp3day+ ThermoReg + ResidMass1 + (1|NestID), na.action = "na.fail",
               data = dat3)
 summary(mam_maxtemp)
 
@@ -147,15 +147,16 @@ summary(mam_meanwindspeed)
 #to test whether it was important for this model because of too many parameters.
 #This could definitely be worse though since it was so unimportant for
 #everything else.
-mod1 <- coxme(Surv(time=Time1, time2=Time2, Dead) ~ ThermoReg*PC13day+ ThermoReg*PC23day +ResidMass1*PC13day + ResidMass1*PC23day + (1|NestID), na.action = "na.fail",
+mod1 <- coxme(Surv(time=Time1, time2=Time2, Dead) ~ThermoReg+ ResidMass1*PC13day + ResidMass1*PC23day  + (1|NestID), na.action = "na.fail",
               data = dat3)
 summary(mod1)
 dredge(mod1)
-
-mam_PC <- coxme(Surv(time=Time1, time2=Time2, Dead) ~ PC13day+ ResidMass1 + ThermoReg  + (1|NestID), na.action = "na.fail",
+anova(mod1)
+mam_PC <- coxme(Surv(time=Time1, time2=Time2, Dead) ~   ThermoReg+ ResidMass1 +PC13day+ (1|NestID), na.action = "na.fail",
                 data = dat3)
+print.coxme(mam_PC)
 
-anova(mod1, test="wald")
+anova(mam_PC)
 summary(mam_PC)
 #Increasing either PC1 or PC2 increases mortality risk. Increasing residual mass
 #decreases risk but to a comparatively small extent.

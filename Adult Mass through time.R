@@ -2,10 +2,9 @@
 library(lubridate)
 library(lme4)
 library(nlme)
-library(car)
+library(tidyverse)
 library(MuMIn)
-library(glmmADMB)
-library(dplyr)
+library(lmerTest)
 #We need to a better analysis of adult mass using all the data. This means GLMM
 #because I have multiple measurements of the same individual each year. 
 
@@ -41,6 +40,7 @@ adult$age <- as.factor(adult$age)
 #them in the dataset....
 adult <- adult[which(adult$age!= "ASY/ASY" & adult$age != "AHY/AHY" & adult$age != "SY + ASY"),]
 
+adult$band <- factor(adult$band)
 adult$hatchdate[which(adult$hatchdate==0)] <- NA
 adult$mass[which(adult$mass<15 | adult$mass>30 )] <- NA
 
@@ -58,6 +58,7 @@ adult$Period <- factor(adult$Period)
 
 
 adult2 <- adult %>% filter((sex=="M" | sex=="F") & !is.na(diff) & !is.na(mass) )
+summary(adult2$year)
 adult3 <- adult %>% filter((sex=="M" | sex=="F") & !is.na(diff) & !is.na(mass) & diff>-5 & diff<30)
 
 
@@ -78,18 +79,17 @@ ggplot(adult3, aes(x=diff, y=mass))+
 adult3_F <- adult3 %>% filter(sex=="F")
 adult3_M <- adult3 %>% filter(sex=="M" & diff>17)
 
-mod <- lm(mass ~ sex*poly(diff, 1)*year, data=adult3, na.action="na.fail")
-mod_2 <- lm(mass ~ sex*poly(diff, 2)*year, data=adult3, na.action="na.fail")
-mod_3 <- lm(mass ~ sex*poly(diff, 3)*year, data=adult3, na.action="na.fail")
-
+mod <- lmer(mass ~ poly(diff, 1)*year2 + (1|band), data=adult3_F, na.action="na.fail")
+summary(mod)
+mod_2 <- lmer(mass ~ poly(diff, 2)*year2 + (1|band), data=adult3_F, na.action="na.fail")
+summary(mod_2)
+mod_3 <- lmer(mass ~ poly(diff, 3)*year2 + (1|band), data=adult3_F, na.action="na.fail")
+summary(mod_2)
 AICc(mod, mod_2, mod_3)
-#Chose to use the 3rd order polynomial. 
+#Definitely need to retain the random effect of bird. 
+#Chose to use the 2rd order polynomial. 
 
-
-mod_F <- lm(mass ~ poly(diff,3)*year, data=adult3_F, na.action="na.fail")
-
-
-
+mod_F <- lmer(mass ~ poly(diff, 2)*year2 + (1|band), data=adult3_F, na.action="na.fail")
 plot(mod_F)
 hist(resid(mod_F))
 plot(resid(mod_F)~adult3_F$diff)
@@ -99,11 +99,13 @@ plot(resid(mod_F)~adult3_F$Period)
 dredge(mod_F)
 anova(mod_F, test="F")
 
-mam_F <- lm(mass ~ poly(diff, 3)*year, data=adult3_F, na.action="na.fail")
+mam_F <- lmer(mass ~ poly(diff, 2)*year2 + (1|band), data=adult3_F, na.action="na.fail")
 summary(mam_F)
+anova(mam_F)
 
 
-newdata_F <- data.frame(year=c(rep(1990, 30), rep(2017, 30)), 
+newdata_F <- data.frame(year=c(rep(1983, 30), rep(2017, 30)),
+                        year2=c(rep(1983-1974, 30), rep(2017-1974, 30)),
                         diff=seq(0, 29, 1), 
                         Period=factor("Incubation", levels=c("Incubation", "Nestling")), 
                         predicted=NA, 
@@ -111,37 +113,77 @@ newdata_F <- data.frame(year=c(rep(1990, 30), rep(2017, 30)),
                         ucl=NA)
 newdata_F$Period[which(newdata_F$diff>=18)]<- "Nestling"
 
-newdata_F[,4:6]<- predict(mam_F, newdata = newdata_F, interval = "confidence")
+library(boot)
+b3 <- bootMer(mam_F,FUN=function(x) predict(x,newdata=newdata_F,re.form=~0),
+              ## re.form=~0 is equivalent to use.u=FALSE
+              nsim=100,seed=101)
+#### Confidence and prediction intervals for *unobserved* levels
+bootsum <- function(x,ext="_1") {
+  d <- data.frame(apply(x$t,2,
+                        function(x) c(mean(x),quantile(x,c(0.025,0.975)))))
+  d <- setNames(d,paste0(c("bpred","lwr","upr"),ext))
+  return(d)
+}
+newdata_F[,5:7]<- t(bootsum(b3,"_3"))
+
+
 ggplot()+
   geom_line(data=newdata_F, aes(x=diff, y=predicted, color=factor(year)))+
   geom_ribbon(data=newdata_F, aes(x=diff, ymin=lcl, ymax=ucl, fill=factor(year)), alpha=0.4)+
-  geom_point(data=adult3_F %>% filter(year==1990 |year==2017), aes(x=diff, y=mass, color=factor(year)))
+  geom_vline(xintercept=14, linetype="dashed")
+
+##################
+#Now let's do the males. 
+mod <- lmer(mass ~ poly(diff, 1)*year2 + (1|band), data=adult3_M, na.action="na.fail")
+summary(mod)
+mod_2 <- lmer(mass ~ poly(diff, 2)*year2 + (1|band), data=adult3_M, na.action="na.fail")
+summary(mod_2)
+mod_3 <- lmer(mass ~ poly(diff, 3)*year2 + (1|band), data=adult3_M, na.action="na.fail")
+summary(mod_2)
+AICc(mod, mod_2, mod_3)
+#SHould retain the random effect but only barely. Also should go with a linear
+#relationship.
 
 
-mod_M <- lm(mass ~ poly(diff, 3)*year, data=adult3_M, na.action="na.fail")
+mod_M <- lmer(mass ~ diff*year2+ (1|band), data=adult3_M, na.action="na.fail")
 
 plot(mod_M)
 hist(resid(mod_M))
+shapiro.test(resid(mod_M))
 plot(resid(mod_M)~adult3_M$diff)
 plot(resid(mod_M)~adult3_M$year)
 
 dredge(mod_M)
-anova(mod_M, test="F")
+anova(mod_M)
+car::Anova(mod_M)
 
-mam_M <- lm(mass ~ poly(diff, 3)* year, data=adult3_M, na.action="na.fail")
+mam_M <- lmer(mass ~ diff*year2 + (1|band), data=adult3_M, na.action="na.fail")
 summary(mam_M)
+anova(mam_M)
 
 
-
-newdata_M <- data.frame(year=c(rep(1990, 12), rep(2017, 12)), 
+newdata_M <- data.frame(year=c(rep(1991, 12), rep(2017, 12)), 
+                        year2=c(rep(1991-1974, 12), rep(2017-1974, 12)),
                         diff=rep(seq(18, 29, 1), 2), 
                         Period=factor("Incubation", levels=c("Incubation", "Nestling")), 
                         predicted=NA, 
                         lcl=NA, 
                         ucl=NA)
 newdata_M$Period[which(newdata_M$diff>=18)]<- "Nestling"
+b3 <- bootMer(mam_M,FUN=function(x) predict(x,newdata=newdata_M,re.form=~0),
+              ## re.form=~0 is equivalent to use.u=FALSE
+              nsim=100,seed=101)
+#### Confidence and prediction intervals for *unobserved* levels
+bootsum <- function(x,ext="_1") {
+  d <- data.frame(apply(x$t,2,
+                        function(x) c(mean(x),quantile(x,c(0.025,0.975)))))
+  d <- setNames(d,paste0(c("bpred","lwr","upr"),ext))
+  return(d)
+}
+newdata_M[,5:7]<- t(bootsum(b3,"_3"))
 
-newdata_M[,4:6]<- predict(mam_M, newdata = newdata_M, interval = "confidence")
+
+
 ggplot()+
   geom_line(data=newdata_M, aes(x=diff, y=predicted, color=factor(year)))+
   geom_ribbon(data=newdata_M, aes(x=diff, ymin=lcl, ymax=ucl, fill=factor(year)), alpha=0.4)
@@ -167,5 +209,5 @@ plot(resid(mod2)~adult4$year)
 dredge(mod2)
 anova(mod2, test="F")
 mam_wing <- lm(wingChord ~ sex, data=adult4, na.action="na.fail")
-
+summary(mam_wing)
 #Wing chord has not deccreased-- these birds aren't actually just getting smaller. They're loosing body condition. 

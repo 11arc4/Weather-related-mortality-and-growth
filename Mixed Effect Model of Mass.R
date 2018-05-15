@@ -66,7 +66,7 @@ AICc(M.gls1_1, M.gls1_2, M.gls1_3)
 
 
 mamMass <- gls(Mass ~ poly(Age, 3), weights = varFixed(~Age), data=dat3)
-
+anova(mamMass)
 dat3$ResidMass <- resid(mamMass)
 
 
@@ -179,6 +179,7 @@ dredge(mod2)
 
 mam_rain <- lmer(ResidMass ~ TotalRainFall3day*ThermoReg + (1|NestID), data=dat3, REML=FALSE)
 summary(mam_rain)
+anova(mam_rain)
 
 ##########################################################
 #############Does meanwindspeed predict residual mass?

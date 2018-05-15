@@ -6,7 +6,7 @@
 #the juveniles are poor quality they don't have much buffer and both they and
 #their parents may have to work harder to feed themselves in poor weather. 
 library(tidyverse)
-library(nlme)
+library(lme4)
 library(MuMIn)
 
 dat <- read.csv("~/Masters Thesis Project/Tree Swallow Data/Amelia TRES data 1975-2016/Extracted Data for Analysis/Nestling Measurements for Analysis 1975-2017.csv", as.is=T)
@@ -43,13 +43,16 @@ ggplot(dat3, aes(x=age, y=mass))+
   geom_point()+
   geom_smooth(method="lm", formula=y~x)
 
+dat3$year2 <- (dat3$year-2017)/10
+dat3$age2 <- dat3$age-10
+dat3$age2 <- dat3$age-15
 
-dat3$year2 <- (dat3$year-1975)/10
-mod <- lmer(mass~age*year2 + (1|nestID), data=dat3, na.action="na.fail")
+
+mod <- lmer(mass~age2*year2 + (1|nestID), data=dat3, na.action="na.fail")
 
 plot(mod)
 hist(resid(mod))
-plot(resid(mod)~dat3$age)
+plot(resid(mod)~dat3$age2)
 plot(resid(mod)~dat3$year2)
 #This model looks really good. 
 
@@ -61,12 +64,21 @@ anova(mod, test="F")
 
 #We should keep all terms
 
-mam <- lmer(mass~age*year2 + (1|nestID), data=dat3, na.action="na.fail")
+mam <- lmer(mass~age2*year2 + (1|nestID), data=dat3, na.action="na.fail")
 summary(mam)
+
+#We'll center age at 10 and 15
+
+
+lmerTest
+
+library(lmerTest)
+anova(mam, test="F")
 
 
 newdata <- data.frame(age=c(rep(10, 41 ), rep(15, 41)), 
                       year2=rep(seq(0.2,4.2 , 0.1), 2), 
+                      age2= c(rep(0, 41 ), rep(5, 41)),
                       year=rep(seq(1977,2017 , 1), 2), 
                       predicted=NA, 
                       lcl=NA, 
@@ -89,7 +101,7 @@ bootsum <- function(x,ext="_1") {
   return(d)
 }
 
-newdata[4:6] <- bootsum(b3,"_3")
+newdata[, 5:7] <- bootsum(b3,"_3")
 
 newdata$age <- as.factor(newdata$age)
 
@@ -100,7 +112,7 @@ ggplot(newdata, aes(x=year))+
   xlim(1975,2017)+
   scale_fill_manual(values=c("steelblue","orchid3"))+
   scale_color_manual(values=c("steelblue","orchid3"))+
-  geom_point(data=dat3 %>% filter(age==15 | age==10), aes(x=year, y=mass, color= factor(age)), alpha=0.5)+
+  #geom_point(data=dat3 %>% filter(age==15 | age==10), aes(x=year, y=mass, color= factor(age)), alpha=0.5)+
   theme_classic(base_size = 16)
 
 
@@ -116,7 +128,7 @@ ggplot(dat4, aes(x=age, y=ninprim))+
   geom_point()+
   geom_smooth()
 
-dat4$year2 <- (dat3$year-1975) /10
+dat4$year2 <- (dat4$year-1975) /10
 
 wmod <- lmer(ninprim~age*year2 + (1|nestID), data=dat4, na.action="na.fail")
 plot(wmod)
@@ -129,7 +141,7 @@ dredge(wmod)
 anova(wmod)
 wmam <- lmer(ninprim~age+year2 + (1|nestID), data=dat4, na.action="na.fail")
 summary(wmam)
-
+anova(wmam)
 
 
 wnewdata <- data.frame(age=c(rep(10, 30 ), rep(15, 30)), 
