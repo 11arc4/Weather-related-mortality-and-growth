@@ -11,14 +11,6 @@ library(lmerTest)
 #The data we are loading in is all the adult body measurements, and includes the
 #data for first nest the bird had that year
 
-
-
-
-
-
-
-
-
 adult <- read.csv("file:///C:/Users/11arc/Documents/Masters Thesis Project/Weather determined growth and mortality paper/Weather Analysis/Adult morphometrics 1975-2017.csv", as.is = T, na.strings=c("", "NA"))
 names(adult)
 str(adult)
@@ -48,6 +40,9 @@ adult$mass[which(adult$mass<15 | adult$mass>30 )] <- NA
 #Can't do hatching because many birds won't have made it to hatching but we
 #caught them during inclubation
 adult$diff <- adult$dateMeas2-adult$laydate
+
+mean(adult$hatchdate-adult$laydate, na.rm=T)
+mean(adult$incdate-adult$laydate, na.rm=T)
 
 #I will start with the basic linear mixed model and build up from there
 #I will include bird band as a random intercept
@@ -130,7 +125,7 @@ newdata_F[,5:7]<- t(bootsum(b3,"_3"))
 PanelA <- ggplot()+
   geom_ribbon(data=newdata_F, aes(x=diff, ymin=lcl, ymax=ucl, fill=factor(year)), alpha=0.4)+
   geom_line(data=newdata_F, aes(x=diff, y=predicted, linetype=factor(year)), color="black")+
-  geom_vline(xintercept=14, linetype="dashed")+
+  geom_vline(xintercept=c(4.6,18.8), linetype=c("dashed", "dotted"))+
   scale_fill_grey()+
   scale_color_grey()+
   xlim(0,30)+
@@ -199,18 +194,18 @@ PanelB <- ggplot()+
   geom_line(data=newdata_M, aes(x=diff, y=predicted, linetype=factor(year)), color="black")+
   scale_fill_grey()+
   scale_color_grey()+
-  geom_vline(xintercept=14, linetype="dashed")+
+  geom_vline(xintercept=c(4.6,18.8), linetype=c("dashed", "dotted"))+
   xlim(0, 30)+
   ylim(19,22.7)+
   geom_text(aes(x=28, y=22.5, label="Male"), family="serif", size=6)+
-  labs(x="Time since laying began", y="Body mass (g)", linetype="", fill="")+
+  labs(x="Days since laying began", y="Body mass (g)", linetype="", fill="")+
   ggthemes::theme_few(base_size = 16, base_family = "serif")+
   theme(legend.position = c(0.2, 0.2))
 
 PanelB
 PanelA
 
-cowplot::plot_grid(PanelA, PanelB, nrow=2, ncol=1, labels = c("a", "b"))
+cowplot::plot_grid(PanelA, PanelB, nrow=2, ncol=1, labels = c("a", "b"), label_fontfamily = "serif" )
 ggsave(filename="~/Masters Thesis Project/Weather determined growth and mortality paper/Plots/Adult mass through time.jpeg", units="in", width=5, height=8, device="jpeg")
 
 

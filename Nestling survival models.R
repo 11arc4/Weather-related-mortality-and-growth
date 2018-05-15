@@ -56,12 +56,13 @@ mod2 <- coxme( Surv(time=Time1, time2=Time2, Dead) ~ ThermoReg*MaxTemp3day+ Resi
                data = dat3)
 
 mod2
-#NestID SD >var so we need to keep it. 
+#NestID SD <var so we need to keep it. 
 
 
 options(na.action="na.fail")
 dredge(mod2)
-#there is a clear winner here. 
+#there is a clear winner here.
+anova(mod2)
 
 mam_maxtemp <- coxme( Surv(time=Time1, time2=Time2, Dead) ~  MaxTemp3day+ ThermoReg + ResidMass1 + (1|NestID), na.action = "na.fail",
               data = dat3)
@@ -88,7 +89,7 @@ mod2
 #Do need nest random effect. 
 
 dredge(mod2)
-#Not really clear whether or not we need residual mass. Since that's what I'm interested in I will leave it in though. (they're both in the top models)
+anova(mod2)
 
 mam_meanTemp <- coxme( Surv(time=Time1, time2=Time2, Dead) ~ ThermoReg + MeanTemp3day + (1|NestID), na.action = "na.fail",
                        data = dat3)
@@ -113,6 +114,7 @@ summary(mod2)
 
 dredge(mod2)
 #Only one best model
+anova(mod2)
 
 mam_rain <- coxme( Surv(time=Time1, time2=Time2, Dead) ~  ThermoReg*TotalRainFall3day + (1|NestID), na.action = "na.fail",
                    data = dat3)
@@ -127,12 +129,13 @@ mod1 <- coxme( Surv(time=Time1, time2=Time2, Dead) ~ ThermoReg*MeanWindspeed3day
 summary(mod1)
 #No need for nestlings random effect
 
-mod2 <- coxme( Surv(time=Time1, time2=Time2, Dead) ~ ThermoReg*MeanWindspeed3day+ ResidMass1*MeanWindspeed3day + (1|NestID), na.action = "na.fail",
+mod2 <- coxme( Surv(time=Time1, time2=Time2, Dead) ~ResidMass1*MeanWindspeed3day+ MeanWindspeed3day*ThermoReg  + (1|NestID), na.action = "na.fail",
                data = dat3)
 summary(mod2)
 #definitely need nest random effect
 
 dredge(mod2)
+anova(mod2)
 
 mam_meanwindspeed <- coxme( Surv(time=Time1, time2=Time2, Dead) ~ MeanWindspeed3day + (1|NestID), na.action = "na.fail",
                data = dat3)
@@ -147,14 +150,13 @@ summary(mam_meanwindspeed)
 #to test whether it was important for this model because of too many parameters.
 #This could definitely be worse though since it was so unimportant for
 #everything else.
-mod1 <- coxme(Surv(time=Time1, time2=Time2, Dead) ~ThermoReg+ ResidMass1*PC13day + ResidMass1*PC23day  + (1|NestID), na.action = "na.fail",
+mod1 <- coxme(Surv(time=Time1, time2=Time2, Dead) ~ ThermoReg*PC13day + ThermoReg*PC23day  +ResidMass1+ (1|NestID), na.action = "na.fail",
               data = dat3)
 summary(mod1)
 dredge(mod1)
 anova(mod1)
-mam_PC <- coxme(Surv(time=Time1, time2=Time2, Dead) ~   ThermoReg+ ResidMass1 +PC13day+ (1|NestID), na.action = "na.fail",
+mam_PC <- coxme(Surv(time=Time1, time2=Time2, Dead) ~   ThermoReg +PC13day+ (1|NestID), na.action = "na.fail",
                 data = dat3)
-print.coxme(mam_PC)
 
 anova(mam_PC)
 summary(mam_PC)
@@ -177,49 +179,34 @@ summary(mam_PC)
 
 coefmam <- coef(mam_PC)
 
-#predict the poikilotherms
-dat3$Predicted[dat3$ThermoReg=="Poikilotherm"] <- dat3$PC1[dat3$ThermoReg=="Poikilotherm"]*coefmam[1] + #PC1
-  dat3$ResidMass1[dat3$ThermoReg=="Poikilotherm"]*coefmam[2]  #ResidMass
 
-#Predict the intermediates
-dat3$Predicted[dat3$ThermoReg=="Intermediate"] <- dat3$PC1[dat3$ThermoReg=="Intermediate"]*coefmam[1] + #PC1
-  dat3$ResidMass1[dat3$ThermoReg=="Intermediate"]*coefmam[2] + #ResidMass
-  coefmam[3] #Intermediate
-
-  
-
-ggplot(dat3, aes(x=Time1, y=Predicted, group=ThermoReg))+
-  geom_point(aes(color=ResidMass1), alpha=0.5)+
-  labs(x="Julian Date", y="Predicted Mortality Risk", color="Residual Mass")
-  
 
 
 #What if I make 3 plots, each holding a different all but one of the varibales at their mean?
 #Resid Mass
-dat3%>% group_by(ThermoReg) %>% summarize(min(ResidMass1), 
-                                          max(ResidMass1), 
+dat3%>% group_by(ThermoReg) %>% summarize(
                                           min(PC13day), 
                                           max(PC13day))
 
 newdata1 <- data.frame(ThermoReg= c(rep("Poikilotherm", 80), rep("Intermediate", 80)), 
-                      ResidMass1= rep(c(rep(-6, 40), rep(6, 40)), 2), 
                       PC13day= c(rep(seq(-3.39, 1.8, length.out = 40), 2), rep(seq(-3.39, 1.8,length.out=40), 2)) ,
                       Predicted=NA)
 #predict the poikilotherms
-newdata1$Predicted[newdata1$ThermoReg=="Poikilotherm"] <- newdata1$PC1[newdata1$ThermoReg=="Poikilotherm"]*coefmam[1] + #PC1
-  newdata1$ResidMass1[newdata1$ThermoReg=="Poikilotherm"]*coefmam[2]  #ResidMass
+newdata1$Predicted[newdata1$ThermoReg=="Poikilotherm"] <- newdata1$PC1[newdata1$ThermoReg=="Poikilotherm"]*coefmam[2]  #PC1
+  
 
 #Predict the intermediates
-newdata1$Predicted[newdata1$ThermoReg=="Intermediate"] <- newdata1$PC1[newdata1$ThermoReg=="Intermediate"]*coefmam[1] + #PC1
-  newdata1$ResidMass1[newdata1$ThermoReg=="Intermediate"]*coefmam[2] + #ResidMass
-  coefmam[3] #Intermediate
+newdata1$Predicted[newdata1$ThermoReg=="Intermediate"] <- newdata1$PC1[newdata1$ThermoReg=="Intermediate"]*coefmam[2] + #PC1
+  coefmam[1] #Intermediate
 
-
-ggplot(newdata1, aes(x=PC13day, y=Predicted, color=ThermoReg, linetype=factor(ResidMass1)))+
-  geom_line()+
+newdata1$ThermoReg <- factor(newdata1$ThermoReg, levels=c("Poikilotherm", "Intermediate"))
+ggplot(newdata1, aes(x=PC13day, y=Predicted, linetype=ThermoReg))+
+  geom_line(color="black")+
   labs(x="Mean PC1 over 3 days", y="Mortality risk", color="", linetype="" )+
   ggthemes::theme_few(base_size=16, base_family="serif")+
-  scale_linetype_discrete(labels=c("Light", "Heavy"))
+  scale_color_grey()+
+  theme(legend.position = c(0.8, 0.8))
+  
 #WHen temperatures are low, and it's kind of windy, the nestlings are very likely to die. 
 
 ggsave(filename="~/Masters Thesis Project/Weather determined growth and mortality paper/Plots/Mortality risk with PC1.jpeg", units="in", width=8, height=4, device="jpeg")

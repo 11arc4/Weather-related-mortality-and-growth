@@ -249,6 +249,10 @@ mam <- mam_rain
 ###########################
 ###Let's try to make an informative plot about what happens to residual mass as rainfaill changes
 dat3%>% group_by(ThermoReg) %>% summarise(min(TotalRainFall3day), max(TotalRainFall3day) )
+ThermoRegLabels <- c(`Poikilotherm`= "Poikilotherm", 
+                     `Intermediate`= "Intermediate", 
+                     `Endotherm`= "Homeotherm")
+
 summary(dat3$PC23day)
 newdata<- data.frame(ThermoReg=factor(c(rep("Poikilotherm", 30), rep("Intermediate", 30), rep("Endotherm", 30))), levels=c("Poikilotherm", "Intermediate", "Endotherm"), 
                      TotalRainFall3day=rep(seq(0, 23.4, length.out = 30), 3), 
@@ -270,68 +274,21 @@ bootsum <- function(x,ext="_1") {
 }
 newdata[,4:6]<- t(bootsum(b3,"_3"))
 
-
-
-ggplot()+
-  #geom_point()+
-  geom_line(data=newdata, aes(x=TotalRainFall3day, y=Predicted))+
-  geom_ribbon(data=newdata, aes(x=TotalRainFall3day, ymin=lcl, ymax=ucl), alpha=0.3)+
-  facet_grid(~ThermoReg, labeller = as_labeller(ThermoRegLabels) )+
-  labs(x="Total rainfall (mm)", y="Residual mass")+
-  ggthemes::theme_few(base_family = "serif", base_size = 16)
-
-ggsave(filename="~/Masters Thesis Project/Weather determined growth and mortality paper/Plots/Resdidual mass with rain.jpeg", units="in", width=8, height=4, device="jpeg")
-
-
-
-
-
-
-
-
-
-
-###Let's try to make an informative plot about what happens to residual mass as PC1 and PC2 change. 
-dat3%>% group_by(ThermoReg) %>% summarise(min(PC13day), max(PC13day) )
-summary(dat3$PC23day)
-newdata2<- data.frame(ThermoReg=factor(c(rep("Poikilotherm", 60), rep("Intermediate", 60), rep("Endotherm", 60)), levels=c("Poikilotherm", "Intermediate", "Endotherm")), 
-                     PC13day=c(rep(seq(-3.39, 1.92, length.out = 30), 2), rep(seq(-3.39, 1.8, length.out = 30), 2), rep(seq(-3.39, 2.09, length.out = 30), 2)), 
-                     PC23day=as.factor(rep(c(rep(-1.30, 30), rep(1.51, 30)), 3)), 
-                     Predicted=NA, 
-                     lcl=NA, 
-                     ucl=NA)
-
-#newdata$Predicted <- predict(mam, newdata,re.form=~0) #level=0 tells us to ignore the random effect and just pick the mean nest!
-library(boot)
-b3 <- bootMer(mam_PC,FUN=function(x) predict(x,newdata=newdata2,re.form=~0),
-              ## re.form=~0 is equivalent to use.u=FALSE
-              nsim=100,seed=101)
-#### Confidence and prediction intervals for *unobserved* levels
-bootsum <- function(x,ext="_1") {
-  d <- data.frame(apply(x$t,2,
-                        function(x) c(mean(x),quantile(x,c(0.025,0.975)))))
-  d <- setNames(d,paste0(c("bpred","lwr","upr"),ext))
-  return(d)
-}
-newdata2[,4:6]<- t(bootsum(b3,"_3"))
-
-ThermoRegLabels <- c(`Poikilotherm`= "Poikilotherm", 
-                     `Intermediate`= "Intermediate", 
-                     `Endotherm`= "Homeotherm")
-
+newdata$ThermoReg <- factor(newdata$ThermoReg, levels=c("Poikilotherm", "Intermediate", "Endotherm"))
 
 ggplot()+
   #geom_point()+
-  geom_line(data=newdata2, aes(x=PC13day, y=Predicted, color=PC23day))+
-  geom_ribbon(data=newdata2, aes(x=PC13day, ymin=lcl, ymax=ucl, fill=PC23day), alpha=0.3)+
-  facet_grid(~ThermoReg, labeller = as_labeller(ThermoRegLabels) )+
-  labs(x="PC1", y="Residual mass", color="PC2", fill="PC2")+
-  ggthemes::theme_few(base_family = "serif", base_size = 16)
+  geom_ribbon(data=newdata, aes(x=TotalRainFall3day, ymin=lcl, ymax=ucl, fill=ThermoReg), alpha=0.3)+
+  geom_line(data=newdata, aes(x=TotalRainFall3day, y=Predicted, linetype=ThermoReg))+
+  #facet_grid(~ThermoReg, labeller = as_labeller(ThermoRegLabels) )+
+  scale_fill_grey()+
+  labs(x="Total rainfall (mm)", y="Residual mass", fill="", linetype="")+
+  ggthemes::theme_few(base_family = "serif", base_size = 16)+
+  theme(legend.position = c(0.2, 0.2))
 
-ggsave(filename="~/Masters Thesis Project/Weather determined growth and mortality paper/Plots/Resdidual mass with PC1.jpeg", units="in", width=8, height=4, device="jpeg")
+ggsave(filename="~/Masters Thesis Project/Weather determined growth and mortality paper/Plots/Resdidual mass with rain.jpeg", units="in", width=5, height=4, device="jpeg")
 
-#High PC1= warmer, less rain, less wind
-#higher PC2= cooler, wetter, much less windy
+
 
 
 
