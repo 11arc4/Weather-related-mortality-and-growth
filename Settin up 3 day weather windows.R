@@ -66,6 +66,6 @@ for(i in 1:nrow(survdat)){
 }
 
 
-write.csv(dat,"file:///C:/Users/11arc/Documents/Masters Thesis Project/Weather determined growth and mortality paper/Weather Analysis/Nestling mass and Weather Data.csv" , row.names = F, na="")
-write.csv(survdat,"file:///C:/Users/11arc/Documents/Masters Thesis Project/Weather determined growth and mortality paper/Weather Analysis/Nestling survival and Weather Data.csv" , row.names = F, na="")
+write.csv(dat,"file:///C:/Users/11arc/Documents/Masters Thesis Project/Weather determined growth and mortality paper/Weather Analysis/Nestling mass and Weather Data 3day.csv" , row.names = F, na="")
+write.csv(survdat,"file:///C:/Users/11arc/Documents/Masters Thesis Project/Weather determined growth and mortality paper/Weather Analysis/Nestling survival and Weather Data 3day.csv" , row.names = F, na="")
 

@@ -43,10 +43,14 @@ weather$TotRain <- as.numeric(weather$TotRain)
 
 
 dat$TotalRain <- NA
+dat$MeanTemp <- NA
 for(i in 1:nrow(dat)){
   if(!is.na(dat$HatchDate[i])& !is.na(dat$FledgeDate[i])){
     dat$TotalRain[i] <- sum(weather$TotRain[weather$Year==dat$Year[i] & weather$JDate>=dat$HatchDate[i] & weather$JDate<dat$FledgeDate[i]], na.rm=T)
-  }
+    dat$MeanTemp[i] <- mean(weather$MeanTemp[weather$Year==dat$Year[i] & weather$JDate>=dat$HatchDate[i] & weather$JDate<dat$FledgeDate[i]], na.rm=T)
+    
+    
+    }
 }
 
 
@@ -58,14 +62,13 @@ data2 <- dat %>% group_by(Year) %>% summarise(FirstNestlings = min(HatchDate, na
                                                LastNestlings = max( FledgeDate, na.rm=T),
                                                LastNestlings75=summary(FledgeDate)[5],
                                               MeanTotalRain = mean(TotalRain, na.rm=T), 
-                                               TotalRain=NA, 
-                                               TotalRainQ = NA, 
-                                               NAs=NA, 
-                                               NAsQ = NA 
+                                            
+                                              AnnualMeanTemp = mean(MeanTemp, na.rm=T)
                                               )
 data2$LastNestlings [data2$LastNestlings==-Inf] <- NA
 data2$MeanTotalRain[data2$MeanTotalRain==0 | is.nan(data2$MeanTotalRain)] <- NA
 
+data2$AnnualMeanTemp[data2$AnnualMeanTemp==0 | is.nan(data2$AnnualMeanTemp)] <- NA
 
 
 
@@ -122,3 +125,16 @@ ggplot(data2 , aes(x=Year) )+
 
 
 
+
+
+
+
+####Has mean temp during nestlings development changed?
+mod <- lm(AnnualMeanTemp ~Year, data=data2)
+plot(mod)
+anova(mod) #nothing
+summary(mod)
+
+ggplot(data2, aes(x=Year,y=AnnualMeanTemp))+
+  geom_point()+
+  geom_smooth(method="lm")

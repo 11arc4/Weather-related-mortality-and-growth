@@ -214,7 +214,8 @@ ggsave(filename="~/Masters Thesis Project/Weather determined growth and mortalit
 #Has wing chord also decreased? Because if it has they're just smaller, not in poorer condition
 adult4 <- adult %>% filter((sex=="M" | sex=="F") & !is.na(diff) & !is.na(wingChord) & wingChord>80 & wingChord<135 & diff>-5 & diff<30)
 
-mod2 <- lmer(wingChord ~ sex*year + (1|band), data=adult4, na.action="na.fail")
+mod2 <- lmer(wingChord ~ year*sex + (1|band), data=adult4, na.action="na.fail")
+adult4$sex <- factor(adult4$sex, levels=c("M", "F"))
 plot(mod2)
 shapiro.test(resid(mod2))
 hist(resid(mod2))
@@ -222,7 +223,7 @@ plot(resid(mod2)~adult4$sex)
 plot(resid(mod2)~adult4$year)
 summary(mod2) #Need to retain band ID-- you are measured multiple times and you'll be about the same
 dredge(mod2)
-anova(mod2, test="F")
-mam_wing <- lm(wingChord ~ sex, data=adult4, na.action="na.fail")
-summary(mam_wing)
+anova(mod2)
 #Wing chord has not deccreased-- these birds aren't actually just getting smaller. They're loosing body condition. 
+
+
