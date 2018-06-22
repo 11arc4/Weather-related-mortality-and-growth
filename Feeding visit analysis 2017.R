@@ -4,6 +4,12 @@ feeding <- read.csv("file:///C:/Users/11arc/Dropbox/TRES RFID 2017/feeding.csv",
 #ffv and mfv are feeding visits per hour (female and male respectively). This is
 #what we want to test for changes with daily weather conditions
 weather <- read.csv("file:///C:/Users/11arc/Dropbox/Kennedy Everitt Honors Thesis/Daily weather data 2017.csv")
+names(weather)[c(5,6,7,10,12,13,14)]<- c("MaxTemp", "MinTemp", "MeanTemp", "TotalRain", "meanwindspeed", "maxwindspeed", "minwindspeed")
+weather.pca <- readRDS("~/Masters Thesis Project/Weather determined growth and mortality paper/Weather Analysis/Weather-related-mortality-and-growth/WeatherPCA.rds")
+
+weather$PC1 <- predict(weather.pca, weather)[,1]
+weather$PC2 <- predict(weather.pca, weather)[,2]
+
 
 
 
@@ -41,17 +47,17 @@ weather$Date.Time <- as.Date (weather$Date.Time, format="%Y-%m-%d")
 
 
 
-feeding <- cbind(feeding, matrix(NA, ncol=9, nrow=nrow(feeding)))
-names(feeding)[13:21] <- c("MaxTemp", "MinTemp", "MeanTemp", "TotalRain", "meanwindspeed", "maxwindspeed", "minwindspeed", "PC1", "PC2")
+feeding <- cbind(feeding, matrix(NA, ncol=18, nrow=nrow(feeding)))
+names(feeding)[13:30] <- c("MaxTemp", "MinTemp", "MeanTemp", "TotalRain", "meanwindspeed", "maxwindspeed", "minwindspeed", "PC1", "PC2", "MaxTemp_3day", "MinTemp_3day", "MeanTemp_3day", "TotalRain_3day", "meanwindspeed_3day", "maxwindspeed_3day", "minwindspeed_3day", "PC1_3day", "PC2_3day")
 for(date in unique(feeding$date)){
   rf <- which(feeding$date==date)
   rw <- which(weather$Date.Time==date)
-  feeding[rf,13:19] <- weather[rw,c(5,6,7,10, 12,13,14)]
+  rw3 <- which(weather$Date.Time<date & weather$Date.Time>=date-3)
+  feeding[rf,13:21] <- weather[rw,c(5,6,7,10, 12,13,14, 16, 17)]
+  feeding[rf, c(22:24, 26:30)] <- weather[rw3,c(5,6,7, 12,13,14, 16, 17)] %>% summarise_all(mean)
+  feeding$TotalRain_3day[rf] <- sum(weather[rw3,10])
 }
 
-weather.pca <- readRDS("~/Masters Thesis Project/Weather determined growth and mortality paper/Weather Analysis/Weather-related-mortality-and-growth/WeatherPCA.rds")
-
-feeding[,20:21] <- predict(weather.pca, feeding)[,1:2]
 
 feeding$LateStageGrowth <- NA
 feeding$FledgeSize <- NA
@@ -386,6 +392,175 @@ plot(resid(mod)~feeding_male2$ffv)
 plot(resid(mod)~feeding_male2$NestlingsAlive)
 anova(mod)
 #nothing
+
+
+
+
+
+
+
+
+
+###############################################
+#Does the weather in the preceding three days affect provisioning rates? 
+
+ggplot(feeding, aes(x=TotalRain_3day, y=ffv))+
+  geom_point()+
+  geom_smooth(method="lm")
+###HAH ffv is higher when it rained previously. 
+ggplot(feeding, aes(x=MeanTemp_3day, y=ffv))+
+  geom_point()
+
+
+
+feeding$TotalRain_3day2 <- "None"
+feeding$TotalRain_3day2[feeding$TotalRain_3day>4]<- "Rain"
+feeding$TotalRain_3day2 <- factor(feeding$TotalRain_3day2)
+##########Female provisioning rates
+
+#Does rain in the previous 3 days predict? 
+mod <- lm(ffv ~NestlingsAlive*TotalRain_3day2, data=feeding_female, na.action="na.fail")
+plot(mod)
+hist(resid(mod))
+shapiro.test(resid(mod))
+plot(resid(mod)~feeding_female$NestlingsAlive)
+plot(resid(mod)~as.factor(feeding_female$TotalRain_3day2))
+anova(mod)
+MuMIn::dredge(mod)
+
+mam_rain3day <- lm(ffv ~NestlingsAlive+TotalRain_3day, data=feeding_female)
+anova(mam)
+summary(mam)
+
+ggplot(feeding_female, aes(x=TotalRain_3day2, y=residffv))+
+  geom_boxplot(aes(fill=TotalRain_3day2), show.legend = F)+
+  geom_jitter(width=0.2)+
+  labs(y="Residual female provisioning rate \n (vists/hr per nestling)", x="Rainfall in previous 3 days", fill="")+
+  theme_classic(base_size = 16, base_family = "serif")
+
+#Does mean temperature in the previous 3 days predict?
+mod <- lm(ffv ~NestlingsAlive*MeanTemp_3day, data=feeding_female, na.action="na.fail")
+plot(mod)
+hist(resid(mod))
+shapiro.test(resid(mod))
+plot(resid(mod)~feeding_female$NestlingsAlive)
+plot(resid(mod)~feeding_female$MeanTemp_3day)
+anova(mod)
+MuMIn::dredge(mod)
+
+mam <- lm(ffv ~NestlingsAlive+MeanTemp_3day, data=feeding_female)
+anova(mam)
+#Nope. Not at all
+
+#Does max temperature in the previous 3 days predict?
+mod <- lm(ffv ~NestlingsAlive*MaxTemp_3day, data=feeding_female, na.action="na.fail")
+plot(mod)
+hist(resid(mod))
+shapiro.test(resid(mod))
+plot(resid(mod)~feeding_female$NestlingsAlive)
+plot(resid(mod)~feeding_female$MaxTemp_3day)
+anova(mod)
+MuMIn::dredge(mod)
+
+mam <- lm(ffv ~NestlingsAlive+MaxTemp_3day, data=feeding_female)
+anova(mam)
+#Nope. Not at all
+
+
+#Does mean windspeed in the previous 3 days predict?
+mod <- lm(ffv ~NestlingsAlive*meanwindspeed_3day, data=feeding_female, na.action="na.fail")
+plot(mod)
+hist(resid(mod))
+shapiro.test(resid(mod))
+plot(resid(mod)~feeding_female$NestlingsAlive)
+plot(resid(mod)~feeding_female$MeanTemp_3day)
+anova(mod)
+MuMIn::dredge(mod)
+
+mam_wind3day <- lm(ffv ~NestlingsAlive+meanwindspeed_3day, data=feeding_female)
+anova(mam)
+#very much so!
+summary(mam)
+
+ggplot(feeding_female, aes(x=meanwindspeed_3day, y=residffv))+
+  geom_point()+
+  geom_smooth(method="lm")+
+  labs(y="Residual female provisioning rate \n (vists/hr per nestling)", x="Mean windspeed (m/s) in previous 3 days", fill="")+
+  theme_classic(base_size = 16, base_family = "serif")
+
+
+#Does overall weather condition in the previous 3 days matter? 
+mod <- lm(ffv ~NestlingsAlive*PC1 + NestlingsAlive*PC2, data=feeding_female, na.action="na.fail")
+plot(mod)
+hist(resid(mod))
+shapiro.test(resid(mod))
+plot(resid(mod)~feeding_female$NestlingsAlive)
+plot(resid(mod)~feeding_female$MeanTemp_3day)
+anova(mod)
+MuMIn::dredge(mod)
+#No
+
+null <- lm(ffv ~NestlingsAlive, data=feeding_female, na.action="na.fail")
+
+
+MuMIn::AICc(mam_rain3day, mam_wind3day, null)
+#They're equally good predictors and both better than the null! 
+
+
+
+
+
+
+
+############is male feeding rate predicted by weather in the preceding 3 days?
+#Can't do rain-- we only have 3 points without rain. 
+#mean temp?
+mod <- lm(mfv ~NestlingsAlive*MeanTemp_3day, data=feeding_male, na.action="na.fail")
+plot(mod)
+hist(resid(mod))
+shapiro.test(resid(mod))
+plot(resid(mod)~feeding_male$NestlingsAlive)
+plot(resid(mod)~feeding_male$MeanTemp_3day)
+anova(mod)
+MuMIn::dredge(mod)
+#Nope
+
+#max temp?
+mod <- lm(mfv ~NestlingsAlive*MaxTemp_3day, data=feeding_male, na.action="na.fail")
+plot(mod)
+hist(resid(mod))
+shapiro.test(resid(mod))
+plot(resid(mod)~feeding_male$NestlingsAlive)
+plot(resid(mod)~feeding_male$MaxTemp_3day)
+anova(mod)
+MuMIn::dredge(mod)
+
+
+#mean windspeed?
+mod <- lm(mfv ~NestlingsAlive*meanwindspeed_3day, data=feeding_male, na.action="na.fail")
+plot(mod)
+hist(resid(mod))
+shapiro.test(resid(mod))
+plot(resid(mod)~feeding_male$NestlingsAlive)
+plot(resid(mod)~feeding_male$meanwindspeed_3day)
+anova(mod)
+MuMIn::dredge(mod)
+
+
+#mean PC1 and PC2?
+mod <- lm(mfv ~NestlingsAlive*PC1_3day + NestlingsAlive*PC2_3day, data=feeding_male, na.action="na.fail")
+plot(mod)
+hist(resid(mod))
+shapiro.test(resid(mod))
+plot(resid(mod)~feeding_male$NestlingsAlive)
+plot(resid(mod)~feeding_male$PC1_3day)
+plot(resid(mod)~feeding_male$PC2_3day)
+anova(mod)
+MuMIn::dredge(mod)
+#Nope! 
+
+
+
 
 
 
