@@ -58,6 +58,9 @@ for(date in unique(feeding$date)){
   feeding$TotalRain_3day[rf] <- sum(weather[rw3,10])
 }
 
+feeding$TotalRain_3day2 <- "None"
+feeding$TotalRain_3day2[feeding$TotalRain_3day>4]<- "Rain"
+feeding$TotalRain_3day2 <- factor(feeding$TotalRain_3day2)
 
 feeding$LateStageGrowth <- NA
 feeding$FledgeSize <- NA
@@ -260,103 +263,32 @@ ggsave(filename="~/Masters Thesis Project/Weather determined growth and mortalit
 
 
 
-############################
-#Redo the entire sweet of analyses with males and females together. 
-
-
-
-feeding_long <- reshape2::melt(feeding, id.vars = c(1:5,8:24), variable="sex", value.name="provisioningrate") %>% filter(!is.na(provisioningrate))
-feeding_long$sex <- as.character(feeding_long$sex)
-feeding_long$sex[feeding_long$sex=="ffv"]<- "F"
-feeding_long$sex[feeding_long$sex=="mfv"]<- "M"
-feeding_long$sex <- as.factor(feeding_long$sex)
-
-###How does weather 
-mod <- lm(provisioningrate ~ sex*MeanTemp*NestlingsAlive, data=feeding_long, na.action="na.fail")
-
-plot(mod)
-hist(resid(mod))
-shapiro.test(resid(mod))
-plot(resid(mod)~feeding_long$sex)
-plot(resid(mod)~feeding_long$MeanTemp)
-plot(resid(mod)~feeding_long$NestlingsAlive)
-
-anova(mod)
-MuMIn::dredge(mod)
-#only thing that matters is nestlings alive if we do it like this. Not even sex really matters. 
-
-
-mod <- lm(provisioningrate ~ sex*MaxTemp*NestlingsAlive, data=feeding_long, na.action="na.fail")
-
-plot(mod)
-hist(resid(mod))
-shapiro.test(resid(mod))
-plot(resid(mod)~feeding_long$sex)
-plot(resid(mod)~feeding_long$MaxTemp)
-plot(resid(mod)~feeding_long$NestlingsAlive)
-
-anova(mod)
-MuMIn::dredge(mod)
-#again only nestlings alive matters
-
-mod <- lm(provisioningrate ~ sex*meanwindspeed*NestlingsAlive, data=feeding_long, na.action="na.fail")
-
-plot(mod)
-hist(resid(mod))
-shapiro.test(resid(mod))
-plot(resid(mod)~feeding_long$sex)
-plot(resid(mod)~feeding_long$meanwindspeed)
-plot(resid(mod)~feeding_long$NestlingsAlive)
-
-anova(mod)
-MuMIn::dredge(mod)
-#again nothing
-
-
-mod <- lm(provisioningrate ~ sex*PC1*NestlingsAlive+sex*PC2*NestlingsAlive , data=feeding_long, na.action="na.fail")
-
-plot(mod)
-hist(resid(mod))
-shapiro.test(resid(mod))
-plot(resid(mod)~feeding_long$sex)
-plot(resid(mod)~feeding_long$PC1)
-plot(resid(mod)~feeding_long$PC2)
-plot(resid(mod)~feeding_long$NestlingsAlive)
-
-anova(mod)
-MuMIn::dredge(mod)
-#NOthing. 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-library#####Is visitation rate a good indicator of somethign that benefits the nestlings? 
+####################################
+#####Is visitation rate a good indicator of somethign that benefits the nestlings? 
 
 #Does mother or father visitation rate predict nestling growth rate? 
 
+ggplot(feeding_female, aes(x=residffv, y=LateStageGrowth))+
+  geom_point()
 ggplot(feeding_female, aes(x=ffv, y=LateStageGrowth))+
   geom_point()
+
 
 ggplot(feeding_male, aes(x=mfv, y=LateStageGrowth))+
   geom_point()+
   geom_smooth(method="lm")
 
 
+ggplot(feeding_female, aes(x=residffv, y=FledgeSize/NestlingsAlive))+
+  geom_point()+
+  geom_smooth(method="glm", method.args=list(family="binomial"))
+
 ggplot(feeding, aes(x=ffv, y=FledgeSize/NestlingsAlive))+
   geom_point()+
-  geom_smooth()
-ggplot(feeding_female, aes(x=mfv, y=FledgeSize/NestlingsAlive))+
+  geom_smooth(method="glm", method.args=list(family="binomial"))
+
+
+ggplot(feeding_male, aes(x=mfv, y=FledgeSize/NestlingsAlive))+
   geom_point()+
   geom_smooth(method="lm")
 
@@ -404,18 +336,6 @@ anova(mod)
 ###############################################
 #Does the weather in the preceding three days affect provisioning rates? 
 
-ggplot(feeding, aes(x=TotalRain_3day, y=ffv))+
-  geom_point()+
-  geom_smooth(method="lm")
-###HAH ffv is higher when it rained previously. 
-ggplot(feeding, aes(x=MeanTemp_3day, y=ffv))+
-  geom_point()
-
-
-
-feeding$TotalRain_3day2 <- "None"
-feeding$TotalRain_3day2[feeding$TotalRain_3day>4]<- "Rain"
-feeding$TotalRain_3day2 <- factor(feeding$TotalRain_3day2)
 ##########Female provisioning rates
 
 #Does rain in the previous 3 days predict? 
