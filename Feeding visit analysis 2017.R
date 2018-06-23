@@ -230,109 +230,6 @@ feeding2[which(cooksd>4*mean(cooksd)),]
 
 
 
-
-
-#I'll just make a couple of quick figures. 
-
-
-
-
-PanelA <- ggplot(feeding_female, aes(x=NestlingsAlive, y=ffv))+
-  geom_point()+
-  geom_smooth(method="lm", color="black")+
-  labs(x="# of nestlings", y="Female provisioning \n (visits/hr)")+
-  theme_classic(base_size = 16, base_family = "serif")
-
-
-PanelB <- ggplot(feeding_male, aes(x=MeanTemp, y=mfv))+
-  geom_point()+
-  geom_smooth(method="lm", color="black")+
-  labs(x=expression('Mean temperature ('*degree*C*')'), y="Male provisioning \n (visits/hr)")+
-  theme_classic(base_size = 16, base_family = "serif")
-
-
-PanelC <- ggplot(feeding2, aes(x=mfv, y=ffv))+
-  geom_point()+
-  geom_smooth(method="lm", color="black")+
-  labs(x="Male provisioning \n (visits/hr)", y="Female provisioning \n (visits/hr)")+
-  theme_classic(base_size = 16, base_family = "serif")
-PanelC
-
-cowplot::plot_grid(PanelA, PanelB, PanelC, nrow=3, ncol=1, labels=c("a","b","c"), label_fontfamily = "serif")
-ggsave(filename="~/Masters Thesis Project/Weather determined growth and mortality paper/Plots/Provisioning Rates.jpeg", units="in", width=3.5, height=9, device="jpeg")
-
-
-
-####################################
-#####Is visitation rate a good indicator of somethign that benefits the nestlings? 
-
-#Does mother or father visitation rate predict nestling growth rate? 
-
-ggplot(feeding_female, aes(x=residffv, y=LateStageGrowth))+
-  geom_point()
-ggplot(feeding_female, aes(x=ffv, y=LateStageGrowth))+
-  geom_point()
-
-
-ggplot(feeding_male, aes(x=mfv, y=LateStageGrowth))+
-  geom_point()+
-  geom_smooth(method="lm")
-
-
-ggplot(feeding_female, aes(x=residffv, y=FledgeSize/NestlingsAlive))+
-  geom_point()+
-  geom_smooth(method="glm", method.args=list(family="binomial"))
-
-ggplot(feeding, aes(x=ffv, y=FledgeSize/NestlingsAlive))+
-  geom_point()+
-  geom_smooth(method="glm", method.args=list(family="binomial"))
-
-
-ggplot(feeding_male, aes(x=mfv, y=FledgeSize/NestlingsAlive))+
-  geom_point()+
-  geom_smooth(method="lm")
-
-
-
-
-#None of these look promising. This is probably because those nestings have already been affected 
-
-#Provisioning rate doesn't predict nestling growth from day 8-12
-rmod <- lm(ffv~NestlingsAlive, data=feeding_female)
-feeding_female$residffv <- resid(rmod)
-
-feeding_female2 <- feeding_female %>% filter(!is.na(LateStageGrowth))
-
-
-mod <- lm(LateStageGrowth ~residffv, data=feeding_female2, na.action = "na.fail")
-plot(mod)
-hist(resid(mod))
-shapiro.test(resid(mod))
-plot(resid(mod)~feeding_female2$residffv)
-anova(mod)
-MuMIn::dredge(mod)
-summary(mod)
-
-
-
-feeding_male2 <- feeding_male %>% filter(!is.na(LateStageGrowth))
-mod <- lm(LateStageGrowth ~mfv, data=feeding_male2, na.action = "na.fail")
-plot(mod)
-hist(resid(mod))
-shapiro.test(resid(mod))
-plot(resid(mod)~feeding_male2$ffv)
-plot(resid(mod)~feeding_male2$NestlingsAlive)
-anova(mod)
-#nothing
-
-
-
-
-
-
-
-
-
 ###############################################
 #Does the weather in the preceding three days affect provisioning rates? 
 
@@ -348,9 +245,9 @@ plot(resid(mod)~as.factor(feeding_female$TotalRain_3day2))
 anova(mod)
 MuMIn::dredge(mod)
 
-mam_rain3day <- lm(ffv ~NestlingsAlive+TotalRain_3day, data=feeding_female)
-anova(mam)
-summary(mam)
+mam_rain3day <- lm(ffv ~NestlingsAlive+TotalRain_3day2, data=feeding_female)
+anova(mam_rain3day)
+summary(mam_rain3day)
 
 ggplot(feeding_female, aes(x=TotalRain_3day2, y=residffv))+
   geom_boxplot(aes(fill=TotalRain_3day2), show.legend = F)+
@@ -429,6 +326,17 @@ MuMIn::AICc(mam_rain3day, mam_wind3day, null)
 
 
 
+#What if we add wind and rain in together? 
+
+both <- lm(ffv ~NestlingsAlive+ TotalRain_3day2+ meanwindspeed_3day, data=feeding_female, na.action="na.fail")
+plot(both)
+hist(resid(both))
+shapiro.test(resid(both))
+plot(resid(both)~feeding_female$NestlingsAlive)
+plot(resid(both)~feeding_female$MeanTemp_3day)
+anova(both)
+MuMIn::dredge(both)
+#When you pop both into the model, the better term is total rain (over windspeed)
 
 
 
@@ -481,6 +389,42 @@ MuMIn::dredge(mod)
 
 
 
+
+####################
+#Figures
+
+
+
+PanelA <- ggplot(feeding_female, aes(x=TotalRain_3day2, y=residffv))+
+  geom_boxplot(aes(), show.legend = F)+
+  geom_jitter(width=0.2)+
+  labs(y="Residual female provisioning rate \n (vists/hr per nestling)", x="Rainfall in previous 3 days", fill="")+
+  theme_classic(base_size = 16, base_family = "serif")
+
+
+PanelB <- ggplot(feeding_female, aes(x=NestlingsAlive, y=ffv))+
+  geom_point()+
+  geom_smooth(method="lm", color="black")+
+  labs(x="# of nestlings", y="Female provisioning \n (visits/hr)")+
+  theme_classic(base_size = 16, base_family = "serif")
+
+
+PanelC <- ggplot(feeding_male, aes(x=MeanTemp, y=mfv))+
+  geom_point()+
+  geom_smooth(method="lm", color="black")+
+  labs(x=expression('Mean temperature ('*degree*C*')'), y="Male provisioning \n (visits/hr)")+
+  theme_classic(base_size = 16, base_family = "serif")
+
+
+PanelD <- ggplot(feeding, aes(x=ffv, y=mfv))+
+  geom_point()+
+  geom_smooth(method="lm", color="black")+
+  labs(x="Female provisioning \n (visits/hr)", y="Male provisioning \n (visits/hr)")+
+  theme_classic(base_size = 16, base_family = "serif")
+
+
+cowplot::plot_grid(PanelA, PanelB, PanelC, PanelD, nrow=2, ncol=2, labels=c("a","b","c", "d"), label_fontfamily = "serif")
+ggsave(filename="~/Masters Thesis Project/Weather determined growth and mortality paper/Plots/Provisioning Rates.jpeg", units="in", width=9, height=9, device="jpeg")
 
 
 
