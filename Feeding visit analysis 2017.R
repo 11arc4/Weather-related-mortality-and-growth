@@ -395,10 +395,10 @@ MuMIn::dredge(mod)
 
 
 
-PanelA <- ggplot(feeding_female, aes(x=TotalRain_3day2, y=residffv))+
+PanelA <- ggplot(feeding_female, aes(x=TotalRain_3day2, y=ffv/NestlingsAlive))+
   geom_boxplot(aes(), show.legend = F)+
   geom_jitter(width=0.2)+
-  labs(y="Residual female provisioning rate \n (vists/hr per nestling)", x="Rainfall in previous 3 days", fill="")+
+  labs(y="Corrected female provisioning rate \n (vists/hr per nestling)", x="Rainfall in previous 3 days", fill="")+
   theme_classic(base_size = 16, base_family = "serif")
 
 
