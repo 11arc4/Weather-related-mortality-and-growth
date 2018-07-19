@@ -113,9 +113,25 @@ ggplot(newdata, aes(x=year))+
   scale_fill_grey()+
   scale_color_grey()+
   #geom_point(data=dat3 %>% filter(age==15 | age==10), aes(x=year, y=mass, color= factor(age)), alpha=0.5)+
-  ggthemes::theme_few(base_size = 16, base_family="serif")+
+  theme_classic(base_size = 16, base_family="serif")+
   theme(legend.position = c(0.85, 0.8))
 ggsave(filename="~/Masters Thesis Project/Weather determined growth and mortality paper/Plots/Nestling mass through time.jpeg", units="in", width=5, height=4, device="jpeg")
+
+
+####Presentation quality graphs
+ggplot(newdata, aes(x=year))+
+  geom_ribbon(aes( ymin=lcl, ymax=ucl, fill=age), alpha=0.3)+
+  geom_line(aes(y=predicted, linetype=age), color="black")+
+  labs(y="Body mass (g)", x="Year", linetype="Age (days)", fill="Age (days)")+ 
+  xlim(1975,2017)+
+  #geom_point(data=dat3 %>% filter(age==15 | age==10), aes(x=year, y=mass, color= factor(age)), alpha=0.5)+
+  theme_classic(base_size = 20)+
+  theme(legend.position = c(0.85, 0.8),
+        axis.title.y=element_text(angle=0, vjust=0.5))
+
+
+ggsave(filename="~/Masters Thesis Project/NACCB Conference/Presentation Figures/Nestling mass through time.jpeg", units="in", width=8, height=5, device="jpeg")
+
 
 
 

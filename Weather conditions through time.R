@@ -105,8 +105,8 @@ summary(mod)
 ggplot(data2, aes(x=Year, y=MeanTotalRain))+
   geom_point()+
   geom_smooth(method="lm", color="black")+
-  labs(x="Year", y="Mean rainfall during \nnestlings development (mm)")+
-  ggthemes::theme_few(base_family = "serif", base_size = 16)
+  labs(x="Year", y="Mean rainfall during \nnestling development (mm)")+
+  theme_classic(base_family = "serif", base_size = 16)
 ggsave(filename="~/Masters Thesis Project/Weather determined growth and mortality paper/Plots/Rainfall increases through time.jpeg", units="in", width=8, height=4, device="jpeg")
 
 
@@ -138,3 +138,18 @@ summary(mod)
 ggplot(data2, aes(x=Year,y=AnnualMeanTemp))+
   geom_point()+
   geom_smooth(method="lm")
+
+
+
+
+
+#Presentation quality plot
+ggplot(data2, aes(x=Year, y=MeanTotalRain))+
+  geom_point()+
+  geom_smooth(method="lm", color="black")+
+  labs(x="Year", y="Mean rainfall \nduring nestling \ndevelopment (mm)")+
+  theme_classic( base_size = 20)+
+  theme(axis.title.y=element_text(angle=0, vjust=0.5)) 
+  
+ggsave(filename="~/Masters Thesis Project/NACCB Conference/Presentation Figures/Rainfall increases through time.jpeg", units="in", width=8, height=6, device="jpeg")
+

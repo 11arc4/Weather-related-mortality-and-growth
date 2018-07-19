@@ -398,7 +398,7 @@ MuMIn::dredge(mod)
 PanelA <- ggplot(feeding_female, aes(x=TotalRain_3day2, y=ffv/NestlingsAlive))+
   geom_boxplot(aes(), show.legend = F)+
   geom_jitter(width=0.2)+
-  labs(y="Corrected female provisioning rate \n (vists/hr per nestling)", x="Rainfall in previous 3 days", fill="")+
+  labs(y="Female provisioning rate \n (vists/hr per nestling)", x="Rainfall in previous 3 days", fill="")+
   theme_classic(base_size = 16, base_family = "serif")
 
 
@@ -419,7 +419,7 @@ PanelC <- ggplot(feeding_male, aes(x=MeanTemp, y=mfv))+
 PanelD <- ggplot(feeding, aes(x=ffv, y=mfv))+
   geom_point()+
   geom_smooth(method="lm", color="black")+
-  labs(x="Female provisioning \n (visits/hr)", y="Male provisioning \n (visits/hr)")+
+  labs(x="Female provisioning (visits/hr)", y="Male provisioning \n (visits/hr)")+
   theme_classic(base_size = 16, base_family = "serif")
 
 

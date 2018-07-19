@@ -274,16 +274,20 @@ bootsum <- function(x,ext="_1") {
 }
 newdata[,4:6]<- t(bootsum(b3,"_3"))
 
-newdata$ThermoReg <- factor(newdata$ThermoReg, levels=c("Poikilotherm", "Intermediate", "Endotherm"))
+newdata$ThermoReg <- factor(newdata$ThermoReg, levels=c("Poikilotherm",
+                                                        "Intermediate", 
+                                                        "Endotherm"))
 
 ggplot()+
   #geom_point()+
   geom_ribbon(data=newdata, aes(x=TotalRainFall3day, ymin=lcl, ymax=ucl, fill=ThermoReg), alpha=0.3)+
   geom_line(data=newdata, aes(x=TotalRainFall3day, y=Predicted, linetype=ThermoReg))+
   #facet_grid(~ThermoReg, labeller = as_labeller(ThermoRegLabels) )+
-  scale_fill_grey()+
+  scale_fill_grey(labels=c("Poikilotherm", "Intermediate", "Homeotherm"))+
+  scale_linetype(labels=c("Poikilotherm", "Intermediate", "Homeotherm"))+
+  
   labs(x="Total rainfall (mm)", y="Residual mass", fill="", linetype="")+
-  ggthemes::theme_few(base_family = "serif", base_size = 16)+
+  theme_classic(base_family = "serif", base_size = 16)+
   theme(legend.position = c(0.2, 0.2))
 
 ggsave(filename="~/Masters Thesis Project/Weather determined growth and mortality paper/Plots/Resdidual mass with rain.jpeg", units="in", width=5, height=4, device="jpeg")
@@ -291,8 +295,32 @@ ggsave(filename="~/Masters Thesis Project/Weather determined growth and mortalit
 
 
 
+ggplot()+
+  #geom_point()+
+  geom_ribbon(data=newdata, aes(x=TotalRainFall3day, ymin=lcl, ymax=ucl, fill=ThermoReg), alpha=0.3)+
+  geom_line(data=newdata, aes(x=TotalRainFall3day, y=Predicted, linetype=ThermoReg))+
+  #facet_grid(~ThermoReg, labeller = as_labeller(ThermoRegLabels) )+
+  scale_fill_grey(labels=c("Poikilotherm", "Intermediate", "Homeotherm"))+
+  scale_linetype(labels=c("Poikilotherm", "Intermediate", "Homeotherm"))+
+  
+  labs(x="Total rainfall (mm)", y="Residual mass", fill="", linetype="")+
+  theme_classic(base_family = "serif", base_size = 16)+
+  theme(legend.position = c(0.2, 0.2))
+
+ggsave(filename="~/Masters Thesis Project/Weather determined growth and mortality paper/Plots/Resdidual mass with rain.jpeg", units="in", width=5, height=4, device="jpeg")
 
 
 
+ggplot()+
+  geom_point(data=dat3 %>% filter(ThermoReg=="Endotherm"), aes(x=TotalRainFall3day, y=ResidMass))+
+  geom_ribbon(data=newdata %>% filter(ThermoReg=="Endotherm"), aes(x=TotalRainFall3day, ymin=lcl, ymax=ucl), alpha=0.3)+
+  geom_line(data=newdata %>% filter(ThermoReg=="Endotherm"),aes(x=TotalRainFall3day, y=Predicted))+
+  #facet_grid(~ThermoReg, labeller = as_labeller(ThermoRegLabels) )+
+  labs(x="Total rainfall (mm)", y="", fill="", linetype="")+
+  theme_classic( base_size = 20)+
+  theme(axis.title.y=element_text(angle=0, vjust=0.5))
+
+
+ggsave(filename="~/Masters Thesis Project/NACCB Conference/Presentation Figures/Nestling mass by rain.jpeg", units="in", width=6, height=5, device="jpeg")
 
 

@@ -132,7 +132,7 @@ PanelA <- ggplot()+
   ylim(19,22.7)+
   geom_text(aes(x=28, y=22.5, label="Female"), family="serif", size=6)+
   labs(x=" ", y="Body mass (g)", linetype="", fill="")+
-  ggthemes::theme_few(base_size = 16, base_family = "serif")+
+  theme_classic(base_size = 16, base_family = "serif")+
   theme(legend.position = c(0.2, 0.2))
 
 
@@ -199,7 +199,7 @@ PanelB <- ggplot()+
   ylim(19,22.7)+
   geom_text(aes(x=28, y=22.5, label="Male"), family="serif", size=6)+
   labs(x="Days since laying began", y="Body mass (g)", linetype="", fill="")+
-  ggthemes::theme_few(base_size = 16, base_family = "serif")+
+  theme_classic(base_size = 16, base_family = "serif")+
   theme(legend.position = c(0.2, 0.2))
 
 PanelB
@@ -227,3 +227,25 @@ anova(mod2)
 #Wing chord has not deccreased-- these birds aren't actually just getting smaller. They're loosing body condition. 
 
 
+####Fran says to do wing chord consistantly with everything else That means
+####seperately for males and females.
+adult4_M <- adult %>% filter((sex=="M") & !is.na(diff) & !is.na(wingChord) & wingChord>80 & wingChord<135 & diff>-5 & diff<30)
+mod_mw <- lmer(wingChord ~ year + (1|band), data=adult4_M, na.action="na.fail")
+plot(mod_mw)
+shapiro.test(resid(mod_mw))
+hist(resid(mod_mw))
+plot(resid(mod_mw)~adult4_M$year)
+summary(mod_mw) #Need to retain band ID-- you are measured multiple times and you'll be about the same
+dredge(mod_mw)
+anova(mod_mw)
+
+adult4_F <- adult %>% filter((sex=="F") & !is.na(diff) & !is.na(wingChord) & wingChord>80 & wingChord<135 & diff>-5 & diff<30)
+
+mod_fw <- lmer(wingChord ~ year + (1|band), data=adult4_F, na.action="na.fail")
+plot(mod_fw)
+shapiro.test(resid(mod_fw))
+hist(resid(mod_fw))
+plot(resid(mod_fw)~adult4_F$year)
+summary(mod_fw) #Need to retain band ID-- you are measured multiple times and you'll be about the same
+dredge(mod_fw)
+anova(mod_fw)
