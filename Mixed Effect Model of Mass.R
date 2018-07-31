@@ -3,6 +3,7 @@ library(ggplot2) #for making plots
 library(dplyr) #for subsetting the data
 library(lme4) #for doing the mixed effect models
 library(nlme)
+library(MuMIn)
 
 ###############
 #Load in the data
@@ -57,11 +58,21 @@ plot(M.gls1)
 plot(M.gls2)
 
 #Should we use the polynomial or a linear? 
-
 M.gls1_3 <- gls(Mass ~ poly(Age, 3), weights = varFixed(~Age), data=dat3)
 M.gls1_2 <- gls(Mass ~ poly(Age, 2), weights = varFixed(~Age), data=dat3)
 M.gls1_1 <- gls(Mass ~ poly(Age, 1), weights = varFixed(~Age), data=dat3)
-AICc(M.gls1_1, M.gls1_2, M.gls1_3)
+
+
+plot(M.gls1_3)
+plot(M.gls1_2)
+plot(M.gls1_1)
+
+fit <- nls(Mass ~ SSlogis(Age, Asym, xmid, scal), data = dat3)
+
+fit <- nls(Mass ~ SSlogis(Age, Asym, xmid, scal), weights = Age, data = dat3)
+plot(fit)
+
+AICc(M.gls1_1, M.gls1_2, M.gls1_3, M.gls1_4, fit)
 #OK We will use the 3rd order
 
 
@@ -239,12 +250,20 @@ AICcTable <- AICc(mam_maxtemp, mam_meantemp, mam_rain, mam_windspeed, mam_PC)
 AICcTable$delta <- AICcTable$AICc-min(AICcTable$AICc) 
 AICcTable
 
-#Total rainfall and PCs are now similarly good at predicting things. 
-
+#Total rainfall and PCs are now similarly good at predicting thing
 
 mam <- mam_rain
 
+r.squaredGLMM(mam_maxtemp )
+r.squaredGLMM( mam_meantemp)
+r.squaredGLMM(mam_rain )
+r.squaredGLMM( mam_windspeed )
+r.squaredGLMM( mam_PC )
 
+#Of the single weather variables, weather is easilty the best with the best R2.
+#PCs don't explain more than weather alone.
+
+#Cite Nakagawa and Schielzeth 2012 for this pseudo R2 calculation
 
 ###########################
 ###Let's try to make an informative plot about what happens to residual mass as rainfaill changes
@@ -324,3 +343,114 @@ ggplot()+
 ggsave(filename="~/Masters Thesis Project/NACCB Conference/Presentation Figures/Nestling mass by rain.jpeg", units="in", width=6, height=5, device="jpeg")
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+###### Can we put everything in together? I think this is a bad idea because
+#it's only when you are able to include the interaction with thermoreg that we
+#even really expect to see something interesting.
+
+cor(dat3[,c(20,22,23)])
+#corelations between total rainfall and temp, and rain and wind are pretty
+#strong. Wind and temp don't correlate.
+
+
+
+mod1 <- lmer(ResidMass ~ TotalRainFall3day*ThermoReg+ + MaxTemp3day*ThermoReg + MeanWindspeed3day*ThermoReg + (1|NestID/NestlingID), data=dat3, REML=FALSE)
+summary(mod1)
+plot(mod1) #this is OK
+hist(resid(mod1)) #looks pretty good but there is a bit of a tail. 
+shapiro.test(resid(mod1)) #this very conservative test says we aren't fitting. I'm thinking I'll ignore it for now but maybe will need to deal with this. 
+plot(resid(mod1)~as.factor(dat3$TotalRainFall3day_2))
+plot(resid(mod1)~dat3$MaxTemp3day)
+plot(resid(mod1)~dat3$MeanWindspeed3day)
+
+plot(resid(mod1)~dat3$ThermoReg)
+plot(resid(mod1)~dat3$NestID)
+plot(resid(mod1)~dat3$NestlingID)
+
+#This looks fine. Drop the nestling ID beccause variance smaller than SD
+
+mod2 <- lmer(ResidMass ~ TotalRainFall3day*ThermoReg+  MaxTemp3day*ThermoReg + MeanWindspeed3day*ThermoReg + (1|NestID), data=dat3, REML=FALSE)
+
+AICc(mod1, mod2) #Hmmm this says  not to do that.... the differences are pretty close. We will stick to mod1
+
+anova(mod1)
+dredge(mod1)
+#Best to keep everything. 
+
+summary(mod1)
+
+ggplot(dat3, aes(x=TotalRainFall3day, y=ResidMass))+
+  geom_point()+
+  geom_smooth()+
+  facet_grid(~ThermoReg)
+
+ggplot(dat3, aes(x=MaxTemp3day, y=ResidMass))+
+  geom_point()+
+  geom_smooth()+
+  facet_grid(~ThermoReg)
+
+ggplot(dat3, aes(x=MeanWindspeed3day, y=ResidMass))+
+  geom_point()+
+  geom_smooth()+
+  facet_grid(~ThermoReg)
+
+
+
+
+
+#OK now make the same model, but using rescaled variables to determine relative
+#importance of each term, for each age.
+dat3$TotalRainFall3day_2 <- scale(dat3$TotalRainFall3day)
+dat3$MaxTemp3day_2 <- scale(dat3$MaxTemp3day)
+dat3$MeanWindspeed3day_2 <- scale(dat3$MeanWindspeed3day)
+
+mod1 <- lmer(ResidMass ~ TotalRainFall3day_2*ThermoReg+ + MaxTemp3day_2*ThermoReg + MeanWindspeed3day_2*ThermoReg + (1|NestID/NestlingID), data=dat3, REML=FALSE)
+sm <- summary(mod1)
+
+Estimates <- data.frame(Age=c(rep("Homeotherm", 3), rep("Intermediate", 3), rep("Poikilotherm", 3)), 
+           Weather= rep(c("Rain", "Temp", "Wind"), 3), 
+           Estimate=as.numeric(rep(NA_real_)),
+           SE=rep(NA_real_))
+dat3$ThermoReg <- factor(dat3$ThermoReg, levels=c("Endotherm", "Poikilotherm", "Intermediate"))
+Estimates[1, 3:4] <- sm$coefficients[2,1:2] #rain homeotherm 
+Estimates[2, 3:4] <- sm$coefficients[5,1:2] #Temp homeotherm
+Estimates[3, 3:4] <- sm$coefficients[6,1:2] #Wind Homeotherm
+
+
+dat3$ThermoReg <- factor(dat3$ThermoReg, levels=c( "Intermediate","Endotherm", "Poikilotherm"))
+mod1 <- lmer(ResidMass ~ TotalRainFall3day_2*ThermoReg+ + MaxTemp3day_2*ThermoReg + MeanWindspeed3day_2*ThermoReg + (1|NestID/NestlingID), data=dat3, REML=FALSE)
+sm <- summary(mod1)
+
+Estimates[4, 3:4] <- sm$coefficients[2,1:2] #rain intermediate 
+Estimates[5, 3:4] <- sm$coefficients[5,1:2] #Temp intermediate
+Estimates[6, 3:4] <- sm$coefficients[6,1:2] #Wind intermediate
+
+
+dat3$ThermoReg <- factor(dat3$ThermoReg, levels=c(  "Poikilotherm","Intermediate","Endotherm"))
+mod1 <- lmer(ResidMass ~ TotalRainFall3day_2*ThermoReg+ + MaxTemp3day_2*ThermoReg + MeanWindspeed3day_2*ThermoReg + (1|NestID/NestlingID), data=dat3, REML=FALSE)
+sm <- summary(mod1)
+
+Estimates[7, 3:4] <- sm$coefficients[2,1:2] #rain poikilotherm 
+Estimates[8, 3:4] <- sm$coefficients[5,1:2] #Temp poikilotherm
+Estimates[9, 3:4] <- sm$coefficients[6,1:2] #Wind poikilotherm
+
+
+ggplot(data=Estimates, aes(x=Estimate, y=Weather, color=Age))+
+  geom_point(size=3)+
+  geom_vline(xintercept=0)+
+  geom_segment(aes(x=Estimate+SE, xend=Estimate-SE, y=Weather, yend=Weather))+
+  xlim(-1.2,1.2)+
+  theme_classic(base_family ="serif", base_size=16)+
+  scale_color_manual(values=c("red3", "darkorchid3", "blue1"))
+ggsave(filename="~/Masters Thesis Project/Weather determined growth and mortality paper/Plots/Relative importance of weather variables on nestling mass.jpeg", units="in", width=6, height=5, device="jpeg")
