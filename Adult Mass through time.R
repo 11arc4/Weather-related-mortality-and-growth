@@ -96,7 +96,7 @@ anova(mod_F, test="F")
 
 mam_F <- lmer(mass ~ poly(diff, 2)*year2 + (1|band), data=adult3_F, na.action="na.fail")
 summary(mam_F)
-anova(mam_F)
+anova(mam_F, test="F")
 
 
 newdata_F <- data.frame(year=c(rep(1990, 30), rep(2010, 30)), 
@@ -135,6 +135,32 @@ PanelA <- ggplot()+
   theme_classic(base_size = 16, base_family = "serif")+
   theme(legend.position = c(0.2, 0.2))
 
+
+PanelA_2 <- ggplot()+
+  geom_ribbon(data=newdata_F, aes(x=diff, ymin=lcl, ymax=ucl, fill=factor(year)), alpha=0.4)+
+  geom_line(data=newdata_F, aes(x=diff, y=predicted, linetype=factor(year)), color="black")+
+  geom_vline(xintercept=c(4.6,18.8), linetype=c("dashed", "dotted"))+
+  geom_count(data=adult3_F%>% filter(year==1990|year==2010), aes(x=diff, y=mass, color=as.factor(year)), shape=1)+
+  ylim(19,22.7)+
+  scale_color_grey()+
+  scale_fill_grey()+
+  geom_text(aes(x=28, y=22.5, label="Female"), family="serif", size=6)+
+  labs(x=" ", y="Body mass (g)", linetype="", color="", fill="")+
+  theme_classic(base_size = 16, base_family = "serif")+
+  theme(legend.position = c(0.9, 0.4), legend.text = element_text(size=10))
+
+
+ggplot()+
+  geom_ribbon(data=newdata_F, aes(x=diff, ymin=lcl, ymax=ucl, fill=factor(year)), alpha=0.4)+
+  geom_line(data=newdata_F, aes(x=diff, y=predicted, linetype=factor(year)), color="black")+
+  geom_vline(xintercept=c(4.6,18.8), linetype=c("dashed", "dotted"))+
+  xlim(0,30)+
+  ylim(19,22.7)+
+  geom_text(aes(x=28, y=22.5, label="Female"), family="", size=6)+
+  labs(x="Days since laying began", y="Body mass (g)", linetype="", fill="")+
+  theme_classic(base_size = 16, base_family = "")+
+  theme(legend.position = c(0.2, 0.2))
+ggsave(filename="~/Graduate Courses/Female mass through time.jpeg", units="in", width=5, height=5, device="jpeg")
 
 
 ##################
@@ -202,11 +228,45 @@ PanelB <- ggplot()+
   theme_classic(base_size = 16, base_family = "serif")+
   theme(legend.position = c(0.2, 0.2))
 
+PanelB_2 <- ggplot()+
+  geom_ribbon(data=newdata_M, aes(x=diff, ymin=lcl, ymax=ucl, fill=factor(year)), alpha=0.4)+
+  geom_line(data=newdata_M, aes(x=diff, y=predicted, linetype=factor(year)), color="black")+
+  geom_count(data=adult3_M%>% filter(year==1990|year==2010), aes(x=diff, y=mass, color=as.factor(year)), shape=1)+
+    scale_fill_grey()+
+  scale_color_grey()+
+  geom_vline(xintercept=c(4.6,18.8), linetype=c("dashed", "dotted"))+
+  xlim(0, 30)+
+  ylim(19,22.7)+
+  geom_text(aes(x=28, y=22.5, label="Male"), family="serif", size=6)+
+  labs(x="Days since laying began", y="Body mass (g)", linetype="", fill="", color="")+
+  theme_classic(base_size = 16, base_family = "serif")+
+  theme(legend.position = c(0.1, 0.4), legend.background = element_blank())
+
+
 PanelB
 PanelA
 
 cowplot::plot_grid(PanelA, PanelB, nrow=2, ncol=1, labels = c("a", "b"), label_fontfamily = "serif" )
 ggsave(filename="~/Masters Thesis Project/Weather determined growth and mortality paper/Plots/Adult mass through time.jpeg", units="in", width=5, height=8, device="jpeg")
+ggsave(filename="~/Masters Thesis Project/Weather determined growth and mortality paper/Plots/Adult mass through time.pdf", units="in", width=5, height=8, device="pdf")
+
+
+cowplot::plot_grid(PanelA_2, PanelB_2, nrow=2, ncol=1, labels = c("a", "b"), label_fontfamily = "serif" )
+ggsave(filename="~/Masters Thesis Project/Weather determined growth and mortality paper/Plots/Adult mass through time with points.jpeg", units="in", width=5, height=8, device="jpeg")
+
+
+ggplot()+
+  geom_ribbon(data=newdata_M, aes(x=diff, ymin=lcl, ymax=ucl, fill=factor(year)), alpha=0.4)+
+  geom_line(data=newdata_M, aes(x=diff, y=predicted, linetype=factor(year)), color="black")+
+  geom_vline(xintercept=c(4.6,18.8), linetype=c("dashed", "dotted"))+
+  xlim(0, 30)+
+  ylim(19,22.7)+
+  geom_text(aes(x=28, y=22.5, label="Male"), family="", size=6)+
+  labs(x="Days since laying began", y="Body mass (g)", linetype="", fill="")+
+  theme_classic(base_size = 16, base_family = "")+
+  theme(legend.position = c(0.2, 0.2))
+
+ggsave(filename="~/Graduate Courses/Male mass through time.jpeg", units="in", width=5, height=5, device="jpeg")
 
 
 

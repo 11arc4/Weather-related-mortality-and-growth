@@ -116,6 +116,21 @@ ggplot(newdata, aes(x=year))+
   theme_classic(base_size = 16, base_family="serif")+
   theme(legend.position = c(0.85, 0.8))
 ggsave(filename="~/Masters Thesis Project/Weather determined growth and mortality paper/Plots/Nestling mass through time.jpeg", units="in", width=5, height=4, device="jpeg")
+ggsave(filename="~/Masters Thesis Project/Weather determined growth and mortality paper/Plots/Nestling mass through time.pdf", units="in", width=5, height=4, device="pdf")
+
+
+ggplot(newdata, aes(x=year))+
+  geom_ribbon(aes( ymin=lcl, ymax=ucl, fill=age), alpha=0.3, show.legend = F)+
+  geom_line(aes(y=predicted, linetype=age), color="black", show.legend = F)+
+  geom_point(data=dat3 %>% filter(age==10 | age==15), aes(x=year, y=mass), shape=1)+
+  labs(y="Body mass (g)", x="Year", linetype="Age (days)", fill="Age (days)")+ 
+  xlim(1975,2017)+
+  scale_fill_grey()+
+  scale_color_grey()+
+  #geom_point(data=dat3 %>% filter(age==15 | age==10), aes(x=year, y=mass, color= factor(age)), alpha=0.5)+
+  theme_classic(base_size = 16, base_family="serif")+
+  facet_grid(~age )
+ggsave(filename="~/Masters Thesis Project/Weather determined growth and mortality paper/Plots/Nestling mass through time with points.jpeg", units="in", width=8, height=4, device="jpeg")
 
 
 ####Presentation quality graphs
@@ -141,10 +156,16 @@ ggsave(filename="~/Masters Thesis Project/NACCB Conference/Presentation Figures/
 
 
 ##################Need to double check that nestlings haven't just gotten smaller. 
-dat4 <- dat %>% filter(!is.na(year) & !is.na(ninprim) & !is.na(age) & ninprim<80 & age>9 & age<16) %>% group_by(nestlingID) %>% slice(which.min(abs(age)-12))
+dat4 <- dat %>% filter(!is.na(year) & !is.na(ninprim) & !is.na(age) & ninprim<80 & age>9 & age<16 & year< 2007) %>% group_by(nestlingID) %>% slice(which.min(abs(age)-12))
 ggplot(dat4, aes(x=age, y=ninprim))+
   geom_point()+
   geom_smooth()
+
+ggplot(dat4, aes(x=year, y=age))+
+  geom_point()+
+  geom_smooth()+
+  ylim(10,16)
+
 
 dat4$year2 <- (dat4$year-1975) /10
 
@@ -154,15 +175,16 @@ hist(resid(wmod))
 plot(resid(wmod)~dat4$year)
 plot(resid(wmod)~dat4$age)
 #looks good. Although there is a fairly large chunk of time where we are missing measurements
-
+summary(wmod)
 dredge(wmod)
 anova(wmod)
-wmam <- lmer(ninprim~age+year2 + (1|nestID), data=dat4, na.action="na.fail")
+
+wmam <- lmer(ninprim~age*year2 + (1|nestID), data=dat4, na.action="na.fail")
 summary(wmam)
 anova(wmam)
 
 
-wnewdata <- data.frame(age=c(rep(10, 30 ), rep(15, 30)), 
+wnewdata <- data.frame(age=c(rep(12, 30 ), rep(15, 30)), 
                       year2=rep(seq(1.3,4.2 , 0.1), 2), 
                       year=rep(seq(1988,2017 , 1), 2), 
                       predicted=NA, 
@@ -175,7 +197,7 @@ wnewdata$predicted <- predict(wmam, wnewdata, re.form=NA)
 
 #bootstrap confidence intervales based on https://github.com/lme4/lme4/issues/388 
 ## param only (not including individual variation or anything like that)
-b3 <- bootMer(mam,FUN=function(x) predict(x,newdata=wnewdata,re.form=~0),
+b3 <- bootMer(wmam,FUN=function(x) predict(x,newdata=wnewdata,re.form=~0),
               ## re.form=~0 is equivalent to use.u=FALSE
               nsim=100,seed=101)
 

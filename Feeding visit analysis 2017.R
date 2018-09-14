@@ -398,14 +398,14 @@ MuMIn::dredge(mod)
 PanelA <- ggplot(feeding_female, aes(x=TotalRain_3day2, y=ffv/NestlingsAlive))+
   geom_boxplot(aes(), show.legend = F)+
   geom_jitter(width=0.2)+
-  labs(y="Female provisioning rate \n (vists/hr per nestling)", x="Rainfall in previous 3 days", fill="")+
+  labs(y="Female provisioning rate \n (vists/hr per nestling)", x="Rainfall in previous \n3 days", fill="")+
   theme_classic(base_size = 16, base_family = "serif")
 
 
 PanelB <- ggplot(feeding_female, aes(x=NestlingsAlive, y=ffv))+
   geom_point()+
   geom_smooth(method="lm", color="black")+
-  labs(x="# of nestlings", y="Female provisioning \n (visits/hr)")+
+  labs(x="# of nestlings\n", y="Female provisioning \n (visits/hr)")+
   theme_classic(base_size = 16, base_family = "serif")
 
 
@@ -419,7 +419,7 @@ PanelC <- ggplot(feeding_male, aes(x=MeanTemp, y=mfv))+
 PanelD <- ggplot(feeding, aes(x=ffv, y=mfv))+
   geom_point()+
   geom_smooth(method="lm", color="black")+
-  labs(x="Female provisioning (visits/hr)", y="Male provisioning \n (visits/hr)")+
+  labs(x="Female provisioning \n(visits/hr)", y="Male provisioning \n (visits/hr)")+
   theme_classic(base_size = 16, base_family = "serif")
 
 
@@ -428,3 +428,49 @@ ggsave(filename="~/Masters Thesis Project/Weather determined growth and mortalit
 
 
 
+
+cowplot::plot_grid(PanelB, PanelA, PanelD, nrow=1, ncol=3, labels=c("a","b","c"), label_fontfamily = "serif", label_size = 20)
+ggsave(filename="~/Masters Thesis Project/Weather determined growth and mortality paper/Plots/Provisioning Rates.jpeg", units="in", width=10, height=4.5, device="jpeg")
+ggsave(filename="~/Masters Thesis Project/Weather determined growth and mortality paper/Plots/Provisioning Rates.pdf", units="in", width=10, height=4.5, device="pdf")
+
+
+
+
+
+
+
+
+#####################
+#We are going to try this again, putting all the terms into one model. 
+mod <- lm(ffv ~NestlingsAlive+ meanwindspeed + MaxTemp+ TotalRain_3day2, data=feeding_female, na.action="na.fail")
+plot(mod)
+hist(resid(mod)) #Not perfect but probably good enough. A bit right skewed. 
+plot(resid(mod)~feeding_female$NestlingsAlive)
+plot(resid(mod)~feeding_female$meanwindspeed)
+plot(resid(mod)~feeding_female$MaxTemp)
+plot(resid(mod)~feeding_female$TotalRain_3day2)
+#This looks OK
+
+anova(mod)
+MuMIn::dredge(mod)
+#Just nestlings alive and total rain 3 day matters. 
+mam <- lm(ffv ~NestlingsAlive+ TotalRain_3day2, data=feeding_female, na.action="na.fail")
+summary(mam)
+anova(mam)
+
+#############
+#How about for the males? 
+mod <- lm(mfv ~NestlingsAlive+ meanwindspeed + MaxTemp, data=feeding_male, na.action="na.fail")
+
+plot(mod)
+hist(resid(mod)) #Not perfect but probably good enough. A bit right skewed. 
+plot(resid(mod)~feeding_male$NestlingsAlive)
+plot(resid(mod)~feeding_male$meanwindspeed)
+plot(resid(mod)~feeding_male$MaxTemp)
+
+#It's not great but I don't think this is surprising or there is anything we can
+#do to improve it unfortunently.
+
+anova(mod)
+MuMIn::dredge(mod)
+#Null model is the top model. 

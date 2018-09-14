@@ -44,10 +44,12 @@ weather$TotRain <- as.numeric(weather$TotRain)
 
 dat$TotalRain <- NA
 dat$MeanTemp <- NA
+dat$MaxTemp <- NA
 for(i in 1:nrow(dat)){
   if(!is.na(dat$HatchDate[i])& !is.na(dat$FledgeDate[i])){
     dat$TotalRain[i] <- sum(weather$TotRain[weather$Year==dat$Year[i] & weather$JDate>=dat$HatchDate[i] & weather$JDate<dat$FledgeDate[i]], na.rm=T)
     dat$MeanTemp[i] <- mean(weather$MeanTemp[weather$Year==dat$Year[i] & weather$JDate>=dat$HatchDate[i] & weather$JDate<dat$FledgeDate[i]], na.rm=T)
+    dat$MaxTemp[i] <- mean(weather$MaxTemp[weather$Year==dat$Year[i] & weather$JDate>=dat$HatchDate[i] & weather$JDate<dat$FledgeDate[i]], na.rm=T)
     
     
     }
@@ -62,7 +64,8 @@ data2 <- dat %>% group_by(Year) %>% summarise(FirstNestlings = min(HatchDate, na
                                                LastNestlings = max( FledgeDate, na.rm=T),
                                                LastNestlings75=summary(FledgeDate)[5],
                                               MeanTotalRain = mean(TotalRain, na.rm=T), 
-                                            
+                                              AnnualMeanMaxTemp = mean(MaxTemp, na.rm=T),
+                                              
                                               AnnualMeanTemp = mean(MeanTemp, na.rm=T)
                                               )
 data2$LastNestlings [data2$LastNestlings==-Inf] <- NA
@@ -70,6 +73,7 @@ data2$MeanTotalRain[data2$MeanTotalRain==0 | is.nan(data2$MeanTotalRain)] <- NA
 
 data2$AnnualMeanTemp[data2$AnnualMeanTemp==0 | is.nan(data2$AnnualMeanTemp)] <- NA
 
+data2$AnnualMeanMaxTemp[data2$AnnualMeanMaxTemp==0 | is.nan(data2$AnnualMeanMaxTemp)] <- NA
 
 
 
@@ -101,13 +105,16 @@ plot(resid(mod)~data3$Year)
 car::Anova(mod)
 MuMIn::dredge(mod)
 summary(mod)
+anova(mod)
 
 ggplot(data2, aes(x=Year, y=MeanTotalRain))+
   geom_point()+
   geom_smooth(method="lm", color="black")+
   labs(x="Year", y="Mean rainfall during \nnestling development (mm)")+
-  theme_classic(base_family = "serif", base_size = 16)
-ggsave(filename="~/Masters Thesis Project/Weather determined growth and mortality paper/Plots/Rainfall increases through time.jpeg", units="in", width=8, height=4, device="jpeg")
+  theme_classic(base_family = "serif", base_size = 16)+
+  scale_y_continuous(breaks=c(30,50,70,90,110,130,150))
+ggsave(filename="~/Masters Thesis Project/Weather determined growth and mortality paper/Plots/Rainfall increases through time.jpeg", units="in", width=5, height=4, device="jpeg")
+ggsave(filename="~/Masters Thesis Project/Weather determined growth and mortality paper/Plots/Rainfall increases through time.pdf", units="in", width=5, height=4, device="pdf")
 
 
 ggplot(data2 , aes(x=Year) )+
@@ -138,6 +145,29 @@ summary(mod)
 ggplot(data2, aes(x=Year,y=AnnualMeanTemp))+
   geom_point()+
   geom_smooth(method="lm")
+
+
+#######
+#has max temp changed though time? 
+
+
+breakpoints <- strucchange::breakpoints(formula= data3$AnnualMeanMaxTemp~data3$Year)
+#There are no breakpoints. This is good. I prefer that it's one smooth line.
+#That matches out other stuff better!
+mod <- lm(AnnualMeanMaxTemp~Year, data=data3, na.action="na.fail")
+plot(mod)
+shapiro.test(resid(mod)) #It's only not normal because of that one outlier year. 
+plot(resid(mod)~data3$Year)
+
+car::Anova(mod)
+MuMIn::dredge(mod)
+summary(mod)
+
+#NO changes in max temperature
+
+
+
+
 
 
 

@@ -1,6 +1,5 @@
 #Load up our packages
-library(ggplot2) #for making plots
-library(dplyr) #for subsetting the data
+library(tidyverse)
 library(lme4) #for doing the mixed effect models
 library(nlme)
 library(MuMIn)
@@ -417,9 +416,9 @@ dat3$MeanWindspeed3day_2 <- scale(dat3$MeanWindspeed3day)
 
 mod1 <- lmer(ResidMass ~ TotalRainFall3day_2*ThermoReg+ + MaxTemp3day_2*ThermoReg + MeanWindspeed3day_2*ThermoReg + (1|NestID/NestlingID), data=dat3, REML=FALSE)
 sm <- summary(mod1)
-
+anova(mod1)
 Estimates <- data.frame(Age=c(rep("Homeotherm", 3), rep("Intermediate", 3), rep("Poikilotherm", 3)), 
-           Weather= rep(c("Rain", "Temp", "Wind"), 3), 
+           Weather= rep(c("Rain", "Temp.", "Wind"), 3), 
            Estimate=as.numeric(rep(NA_real_)),
            SE=rep(NA_real_))
 dat3$ThermoReg <- factor(dat3$ThermoReg, levels=c("Endotherm", "Poikilotherm", "Intermediate"))
@@ -451,6 +450,56 @@ ggplot(data=Estimates, aes(x=Estimate, y=Weather, color=Age))+
   geom_vline(xintercept=0)+
   geom_segment(aes(x=Estimate+SE, xend=Estimate-SE, y=Weather, yend=Weather))+
   xlim(-1.2,1.2)+
-  theme_classic(base_family ="serif", base_size=16)+
+  labs(x="", y="")+
+  theme_classic( base_size=20)+
+  theme(legend.title.align =0.5, 
+        legend.position = c(0.8,0.2), 
+        legend.background = element_rect( size = 0.5, colour = 1), 
+        legend.text = element_text(size=14), 
+        legend.title =element_text(size=16) )+
   scale_color_manual(values=c("red3", "darkorchid3", "blue1"))
-ggsave(filename="~/Masters Thesis Project/Weather determined growth and mortality paper/Plots/Relative importance of weather variables on nestling mass.jpeg", units="in", width=6, height=5, device="jpeg")
+ggsave(filename="~/Masters Thesis Project/Weather determined growth and mortality paper/Plots/Relative importance of weather variables on nestling mass.jpeg", units="in", width=6, height=4.5, device="jpeg")
+
+
+ggplot(data=Estimates, aes(x=Estimate, y=Weather, color=Age))+
+  geom_vline(xintercept=0)+
+  
+  geom_point(size=5, aes(shape=Age))+
+  geom_segment(aes(x=Estimate+SE, xend=Estimate-SE, y=Weather, yend=Weather), show.legend = F)+
+  xlim(-1.2,1.2)+
+  labs(x="Effect Size", y="", color="", shape="")+
+  theme_classic(base_family ="serif", base_size=16)+
+  scale_color_grey()+
+  theme(legend.position = c(0.8,0.2),
+        legend.box.background   = element_rect(colour = "black"), 
+        legend.background = element_blank(), 
+        legend.title = element_blank())
+ggsave(filename="~/Masters Thesis Project/Weather determined growth and mortality paper/Plots/Mass Effect size plot_grey.jpeg", units="in", width=6, height=5, device="jpeg")
+ggsave(filename="~/Masters Thesis Project/Weather determined growth and mortality paper/Plots/Mass Effect size plot_grey.pdf", units="in", width=6, height=5, device="pdf")
+
+
+PanelA_2 <- ggplot(dat3, aes(x=MeanWindspeed3day, y=ResidMass, group=ThermoReg))+
+  geom_point(shape=1)+
+  geom_smooth(method="lm")+
+  facet_grid(ThermoReg~.)+
+  labs(x="Mean windspeed (m/s)\n", y="Residual mass")+
+  theme_classic(base_size = 16, base_family = "serif")
+
+
+PanelB_2 <- ggplot(dat3, aes(x=MaxTemp3day, y=ResidMass, group=ThermoReg))+
+  geom_point(shape=1)+
+  geom_smooth(method="lm")+
+  facet_grid(ThermoReg~.)+
+  labs(x=expression("Max. temperature " ( degree*C)), y="Residual mass")+
+  theme_classic(base_size = 16, base_family = "serif")
+
+PanelC_2 <- ggplot(dat3, aes(x=TotalRainFall3day, y=ResidMass, group=ThermoReg))+
+  geom_point(shape=1)+
+  geom_smooth(method="lm")+
+  facet_grid(ThermoReg~.)+
+  labs(x="Total Rainfall (mm)\n", y="Residual mass")+
+  theme_classic(base_size = 16, base_family = "serif")
+
+
+cowplot::plot_grid(PanelA_2, PanelB_2, PanelC_2, nrow = 1, ncol=3, labels = c("a", "b", "c"), label_fontfamily = "serif")
+ggsave(filename="~/Masters Thesis Project/Weather determined growth and mortality paper/Plots/Weather Mass plot with points.jpeg", units="in", width=8, height=8, device="jpeg")
