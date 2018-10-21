@@ -37,6 +37,15 @@ ggplot(dat2 %>% filter(age>=10), aes(x=age, y=mass))+
 #measurements (day 10 and on), when they are closer to fledging. I used only one
 #measurement per nestling (the one closest to 12 days old)
 dat3 <- dat2 %>% filter(!is.na(year) & !is.na(age) & age>9 & age<=16 ) %>% group_by(nestlingID) %>% slice(which.min(abs(age)-12))
+
+dat3 <- dat2 %>% 
+  filter(!is.na(year) & !is.na(age) & age>9 & age<=16 ) %>% 
+  group_by(nestID,year) %>% 
+  summarise(age = mean(age[which(table(age) == max(table(age)))[1]]), 
+            mmass= mean(mass[which(table(age) == max(table(age)))[1]]))
+
+
+
 length(unique(dat3$nestID))
 #Data set has 28, 577 rows, and 2,915 unique nests, 13,842 unique nestlings. 
 ggplot(dat3, aes(x=age, y=mass))+
@@ -48,12 +57,16 @@ dat3$age2 <- dat3$age-10
 dat3$age2 <- dat3$age-15
 
 
-mod <- lmer(mass~age*year2 + (1|nestID), data=dat3, na.action="na.fail")
 
-plot(mod)
-hist(resid(mod))
-plot(resid(mod)~dat3$age)
-plot(resid(mod)~dat3$year2)
+mod1 <- lmer(mass~age*year2 + (1|nestID) + (1|nestlingID), data=dat3, na.action="na.fail")
+
+mod1 <- lm(mmass ~age* year2, data=dat3, 
+            na.action=na.omit)
+plot(mod1)
+qqnorm(mod1)
+hist(resid(mod1))
+plot(resid(mod1)~dat3$age)
+plot(resid(mod1)~dat3$year2)
 #This model looks really good. 
 
 #Need to keep the random nest effect
@@ -62,7 +75,15 @@ summary(mod)
 dredge(mod)
 anova(mod, test="F")
 
+
+mod1_c <- lme(mmass ~age* year2, data=dat3, 
+              correlation = corAR1(form=~year2),
+              na.action=na.omit)
+
+qqnorm(mod1_c)
 #We should keep all terms
+
+AICc(mod1, mod1_c) #Better not to have the correlation structure. 
 
 mam <- lmer(mass~age*year2 + (1|nestID), data=dat3, na.action="na.fail")
 summary(mam)

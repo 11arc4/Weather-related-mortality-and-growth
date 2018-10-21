@@ -34,6 +34,10 @@ dat2 <- dat %>% filter (substring(NestID, 1,2)!="AG")
 dat3 <- dat2 %>% filter (!is.na(Mass) & !is.na(Age) & !is.na(ThermoReg) & Age<=12 & !is.na(PC13day))
 
 
+
+
+
+
 ggplot(dat3, aes(x=Age, y=Mass))+
   geom_point()+
   stat_smooth(method="lm", formula=y~poly(x, 3))+
@@ -80,34 +84,35 @@ anova(mamMass)
 dat3$ResidMass <- resid(mamMass)
 
 
+dat4 <- dat3 %>% group_by(NestlingID) %>% mutate(ResidMass_scaled=ResidMass-mean(ResidMass))
 
 
 ########################################################################
 #Do you tend to have lower mass when there was lousy weather 2 days prior, and
 #does that effect depend on your thermoregulatory strategy?
-ggplot(dat3, aes(y=ResidMass, x=MeanTemp3day))+
+ggplot(dat4, aes(y=ResidMass_scaled, x=MeanTemp3day))+
   geom_point()+
   geom_smooth(method="lm")+
   facet_grid(~ThermoReg)
 
 
-ggplot(dat3, aes(y=ResidMass, x=MaxTemp3day))+
+ggplot(dat4, aes(y=ResidMass_scaled, x=MaxTemp3day))+
   geom_point()+
   geom_smooth(method="lm")+
   facet_grid(~ThermoReg)
 
-ggplot(dat3, aes(y=ResidMass, x=MeanWindspeed3day))+
+ggplot(dat4, aes(y=ResidMass_scaled, x=MeanWindspeed3day))+
   geom_point()+
   geom_smooth(method="lm")+
   facet_grid(~ThermoReg)
 
-ggplot(dat3, aes(y=ResidMass, x=TotalRainFall3day))+
+ggplot(dat4, aes(y=ResidMass_scaled, x=TotalRainFall3day))+
   geom_point()+
   geom_smooth(method="lm")+
   facet_grid(~ThermoReg)
 
 
-ggplot(dat3 %>% filter(HatchDate<170), aes(y=ResidMass, x=HatchDate))+
+ggplot(dat4 %>% filter(HatchDate<170), aes(y=ResidMass_scaled, x=HatchDate))+
   geom_point()+
   geom_smooth(method="lm")+
   facet_grid(~ThermoReg)
@@ -116,25 +121,29 @@ ggplot(dat3 %>% filter(HatchDate<170), aes(y=ResidMass, x=HatchDate))+
 
 ##########################################################
 #############Does max temperature perdict residual mass?
-mod1 <- lmer(ResidMass ~ MaxTemp3day*ThermoReg + (1|NestID/NestlingID), data=dat3, REML=FALSE)
+mod1 <- lmer(ResidMass_scaled ~ MaxTemp3day*ThermoReg + (1|NestID/NestlingID), data=dat4, REML=FALSE)
 plot(mod1) #this is OK
 hist(resid(mod1)) #looks pretty good but there is a bit of a tail. 
 shapiro.test(resid(mod1)) #this very conservative test says we aren't fitting. I'm thinking I'll ignore it for now but maybe will need to deal with this. 
-plot(resid(mod1)~dat3$MaxTemp)
-plot(resid(mod1)~dat3$ThermoReg)
-plot(resid(mod1)~dat3$NestID)
+plot(resid(mod1)~dat4$MaxTemp3day)
+plot(resid(mod1)~dat4$ThermoReg)
+plot(resid(mod1)~dat4$NestID)
 
 
 summary(mod1)
 #Don't need nestling ID as a random effect
 
-mod2 <- lmer(ResidMass ~ MaxTemp3day*ThermoReg + (1|NestID), data=dat3, REML=FALSE)
+mod2 <- lmer(ResidMass_scaled ~ MaxTemp3day*ThermoReg + (1|NestID), data=dat4, REML=FALSE)
 summary(mod2)
-#Do need nest ID as a random effect
+#Do not need nest ID as a random effect
 
-dredge(mod2)
 
-mam_maxtemp <- lmer(ResidMass ~ MaxTemp3day*ThermoReg + (1|NestID), data=dat3, REML=FALSE)
+mod3 <- lm(ResidMass_scaled ~ MaxTemp3day*ThermoReg, data=dat4, na.action = "na.fail")
+
+
+dredge(mod3)
+
+mam_maxtemp <- lm(ResidMass_scaled ~ MaxTemp3day*ThermoReg, data=dat4)
 summary(mam_maxtemp)
 
 
@@ -480,7 +489,7 @@ ggsave(filename="~/Masters Thesis Project/Weather determined growth and mortalit
 
 PanelA_2 <- ggplot(dat3, aes(x=MeanWindspeed3day, y=ResidMass, group=ThermoReg))+
   geom_point(shape=1)+
-  geom_smooth(method="lm")+
+  geom_smooth(method="lm", color="black")+
   facet_grid(ThermoReg~.)+
   labs(x="Mean windspeed (m/s)\n", y="Residual mass")+
   theme_classic(base_size = 16, base_family = "serif")
@@ -488,14 +497,14 @@ PanelA_2 <- ggplot(dat3, aes(x=MeanWindspeed3day, y=ResidMass, group=ThermoReg))
 
 PanelB_2 <- ggplot(dat3, aes(x=MaxTemp3day, y=ResidMass, group=ThermoReg))+
   geom_point(shape=1)+
-  geom_smooth(method="lm")+
+  geom_smooth(method="lm", color="black")+
   facet_grid(ThermoReg~.)+
   labs(x=expression("Max. temperature " ( degree*C)), y="Residual mass")+
   theme_classic(base_size = 16, base_family = "serif")
 
 PanelC_2 <- ggplot(dat3, aes(x=TotalRainFall3day, y=ResidMass, group=ThermoReg))+
   geom_point(shape=1)+
-  geom_smooth(method="lm")+
+  geom_smooth(method="lm", color="black")+
   facet_grid(ThermoReg~.)+
   labs(x="Total Rainfall (mm)\n", y="Residual mass")+
   theme_classic(base_size = 16, base_family = "serif")

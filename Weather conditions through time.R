@@ -97,7 +97,9 @@ data3 <- data2 %>% filter(!is.na(MeanTotalRain))
 breakpoints <- strucchange::breakpoints(formula= data3$MeanTotalRain~data3$Year)
 #There are no breakpoints. This is good. I prefer that it's one smooth line.
 #That matches out other stuff better!
-mod <- lm(MeanTotalRain~Year, data=data3, na.action="na.fail")
+mod3 <- lm(MeanTotalRain~poly(Year, 3), data=data3, na.action="na.fail")
+mod2 <- lm(MeanTotalRain~poly(Year, 2), data=data3, na.action="na.fail")
+mod1 <- lm(MeanTotalRain~poly(Year, 1), data=data3, na.action="na.fail")
 plot(mod)
 shapiro.test(resid(mod)) #It's only not normal because of that one outlier year. 
 plot(resid(mod)~data3$Year)
@@ -106,6 +108,12 @@ car::Anova(mod)
 MuMIn::dredge(mod)
 summary(mod)
 anova(mod)
+
+AICc(mod1, mod2, mod3)
+#mod 1 is the best. 
+
+
+
 
 ggplot(data2, aes(x=Year, y=MeanTotalRain))+
   geom_point()+
@@ -154,7 +162,11 @@ ggplot(data2, aes(x=Year,y=AnnualMeanTemp))+
 breakpoints <- strucchange::breakpoints(formula= data3$AnnualMeanMaxTemp~data3$Year)
 #There are no breakpoints. This is good. I prefer that it's one smooth line.
 #That matches out other stuff better!
-mod <- lm(AnnualMeanMaxTemp~Year, data=data3, na.action="na.fail")
+mod3 <- lm(AnnualMeanMaxTemp~poly(Year, 3), data=data3, na.action="na.fail")
+
+mod2 <- lm(AnnualMeanMaxTemp~poly(Year, 2), data=data3, na.action="na.fail")
+
+mod1 <- lm(AnnualMeanMaxTemp~Year, data=data3, na.action="na.fail")
 plot(mod)
 shapiro.test(resid(mod)) #It's only not normal because of that one outlier year. 
 plot(resid(mod)~data3$Year)
@@ -162,6 +174,8 @@ plot(resid(mod)~data3$Year)
 car::Anova(mod)
 MuMIn::dredge(mod)
 summary(mod)
+
+AICc(mod3, mod2, mod1)
 
 #NO changes in max temperature
 
