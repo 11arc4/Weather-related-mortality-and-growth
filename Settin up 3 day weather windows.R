@@ -7,16 +7,21 @@ weather <- read.csv("C:/Users/11arc/Dropbox/Kennedy Everitt Honors Thesis/Daily 
 weather <- weather[weather$JulianDate>144 & weather$JulianDate<195,]
 names(weather)[5:11] <-  c("MaxTemp", "MinTemp", "MeanTemp", "HeatDegDays", "CoolDegDays", "TotalRain", "TotalPrecip")
 
-weatherVar2 <- weather[,c(5:7, 10, 12:14)]  
-#we are going to use all the weather variables because that's what we did in the
-#other analyses and it's important to be consistant, even thoguh the results are
-#no different either way
+#weatherVar2 <- weather[,c(5:7, 10, 12:14)]  
+
+#It's better to drop min and max windspeed so that the loadings for total rain
+#is better (before it's not on the top 2 PC because there were more wind and temp variables than rain)
+weatherVar2 <- weather[,c(5:7, 10, 12)]  
+
 weather.pca <- prcomp(weatherVar2, 
                       center=T, 
                       scale=T)
 
 plot(weather.pca, type="lines")
 summary(weather.pca)
+
+
+
 #By using weather PCs 1 and 2 we can capture 72% of the weather variation. We will use those 2. 
 saveRDS(weather.pca, file="~/Masters Thesis Project/Weather determined growth and mortality paper/Weather Analysis/Weather-related-mortality-and-growth/WeatherPCA.rds")
 weather$PC1 <- predict(weather.pca, weather[,c(5:7, 10, 12:14)]  )[,1]

@@ -6,7 +6,7 @@ library(MuMIn)
 
 ###############
 #Load in the data
-dat <- read.csv("file:///C:/Users/11arc/Documents/Masters Thesis Project/Weather determined growth and mortality paper/Weather Analysis/Nestling mass and Weather Data.csv", as.is=T)
+dat <- read.csv("file:///C:/Users/11arc/Documents/Masters Thesis Project/Weather determined growth and mortality paper/Weather Analysis/Nestling mass and Weather Data 3day.csv", as.is=T)
 
 str(dat)
 #make nestling ID and Nest ID catagories, because they are currently characters 
@@ -82,6 +82,14 @@ AICc(M.gls1_1, M.gls1_2, M.gls1_3, M.gls1_4, fit)
 mamMass <- gls(Mass ~ poly(Age, 3), weights = varFixed(~Age), data=dat3)
 anova(mamMass)
 dat3$ResidMass <- resid(mamMass)
+
+
+ggplot(dat3, aes(x=Age, y=Mass))+
+  geom_jitter(alpha=0.3, width=0.1)+
+  geom_smooth(method=lm, formula=y~poly(x,3), se=F, color="black")+
+  theme_classic(base_family = "serif", base_size =  12)+
+  scale_x_continuous(breaks=seq(0,13,2))
+ggsave(filename="~/Masters Thesis Project/Weather determined growth and mortality paper/Plots/Bodymass by age plot.jpeg", units="in", width=4, height=3, device="jpeg")
 
 
 dat4 <- dat3 %>% group_by(NestlingID) %>% mutate(ResidMass_scaled=ResidMass-mean(ResidMass))
@@ -226,7 +234,7 @@ summary(mam_windspeed)
 ########################################################## Does the combination
 #############of weather variables (PC1 and PC2) predict residual mass better
 #############than any one alone?
-mod1 <- lmer(ResidMass ~ PC13day*ThermoReg+ PC23day*ThermoReg + (1|NestID/NestlingID), data=dat3, REML=FALSE)
+mod1 <- lmer(ResidMass_scaled ~ PC13day*ThermoReg+ PC23day*ThermoReg + (1|NestID/NestlingID), data=dat4, REML=FALSE)
 plot(mod1)
 hist(resid(mod1)) #looks pretty good but there is a bit of a tail. 
 shapiro.test(resid(mod1)) #this very conservative test says we aren't fitting. I'm thinking I'll ignore it for now but maybe will need to deal with this. 
@@ -239,20 +247,47 @@ plot(resid(mod1)~dat3$NestID)
 summary(mod1)
 #Should drop the nestling ID
 
-mod2 <- lmer(ResidMass ~ PC13day*ThermoReg+ PC23day*ThermoReg + (1|NestID), data=dat3, REML=FALSE)
+mod2 <- lmer(ResidMass_scaled ~ PC13day*ThermoReg+ PC23day*ThermoReg + (1|NestID), data=dat4, REML=FALSE)
 summary(mod2)
-#Need to keep the NestID
+#don't need to keep the NestID
 
-dredge(mod2)
+mod3 <- lm(ResidMass_scaled ~ PC13day*ThermoReg+ PC23day*ThermoReg, data=dat4)
 
-#Full model is the best by a long shot
+dredge(mod3)
+anova(mod3)
+
+
 dat3$ThermoReg <- factor(dat3$ThermoReg, levels=c("Poikilotherm", "Endotherm", "Intermediate"))
 dat3$ThermoReg <- factor(dat3$ThermoReg, levels=c(  "Intermediate", "Poikilotherm","Endotherm"))
 
 
-mam_PC <- lmer(ResidMass ~ PC13day*ThermoReg+ PC23day + (1|NestID), data=dat3, REML=FALSE)
+mam_PC <- lm(ResidMass_scaled ~ PC13day*ThermoReg+ PC23day, data=dat4)
 summary(mam_PC)
 
+plot(mam_PC)
+
+
+BM_PC1 <- ggplot(dat4, aes(x=PC13day, y=ResidMass_scaled))+
+  geom_point()+
+  geom_smooth(method="lm", color="black")+
+  facet_grid(~ThermoReg)+
+  labs(x="PC1 (warmer, less rain)", y="Residual body mass")+
+  theme_classic(base_family = "serif", base_size = 12)
+  
+BM_PC2 <- ggplot(dat4, aes(x=PC23day, y=ResidMass_scaled))+
+  geom_point()+
+  labs(x="PC2 (rainy, less wind)", y="Residual body mass")+
+  geom_smooth(method="lm", color="black")+
+  theme_classic(base_family = "serif", base_size = 12)
+  
+cowplot::plot_grid(BM_PC1, BM_PC2, nrow = 2, ncol=1, labels = c("a", "b"), label_fontfamily = "serif")
+ggsave(filename="~/Masters Thesis Project/Weather determined growth and mortality paper/Plots/PC rescaled bodymass plot.jpeg", units="in", width=8, height=8, device="jpeg")
+
+weather.pca <- readRDS("~/Masters Thesis Project/Weather determined growth and mortality paper/Weather Analysis/Weather-related-mortality-and-growth/WeatherPCA.rds")
+#PC1 increases with warmer days with little rain. 
+#PC2 increases with more rain and less wind. 
+summary(weather.pca)
+rm(weather.pca)
 
 AICcTable <- AICc(mam_maxtemp, mam_meantemp, mam_rain, mam_windspeed, mam_PC) 
 AICcTable$delta <- AICcTable$AICc-min(AICcTable$AICc) 
@@ -512,3 +547,22 @@ PanelC_2 <- ggplot(dat3, aes(x=TotalRainFall3day, y=ResidMass, group=ThermoReg))
 
 cowplot::plot_grid(PanelA_2, PanelB_2, PanelC_2, nrow = 1, ncol=3, labels = c("a", "b", "c"), label_fontfamily = "serif")
 ggsave(filename="~/Masters Thesis Project/Weather determined growth and mortality paper/Plots/Weather Mass plot with points.jpeg", units="in", width=8, height=8, device="jpeg")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+##########################
+#Based on reviewer 2, we should not have any colinearity in our models, so it would be better to use the PCs
+
+
+
