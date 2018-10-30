@@ -30,6 +30,7 @@ adult$age <- as.factor(adult$age)
 #because their age estimates... I also need to remove all the birds that were
 #polygynous because I still haven't really figured out a good way to deal with
 #them in the dataset....
+
 adult <- adult[which(adult$age!= "ASY/ASY" & adult$age != "AHY/AHY" & adult$age != "SY + ASY"),]
 
 adult$band <- factor(adult$band)

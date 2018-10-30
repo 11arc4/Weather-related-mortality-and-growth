@@ -98,34 +98,6 @@ dat4 <- dat3 %>% group_by(NestlingID) %>% mutate(ResidMass_scaled=ResidMass-mean
 ########################################################################
 #Do you tend to have lower mass when there was lousy weather 2 days prior, and
 #does that effect depend on your thermoregulatory strategy?
-ggplot(dat4, aes(y=ResidMass_scaled, x=MeanTemp3day))+
-  geom_point()+
-  geom_smooth(method="lm")+
-  facet_grid(~ThermoReg)
-
-
-ggplot(dat4, aes(y=ResidMass_scaled, x=MaxTemp3day))+
-  geom_point()+
-  geom_smooth(method="lm")+
-  facet_grid(~ThermoReg)
-
-ggplot(dat4, aes(y=ResidMass_scaled, x=MeanWindspeed3day))+
-  geom_point()+
-  geom_smooth(method="lm")+
-  facet_grid(~ThermoReg)
-
-ggplot(dat4, aes(y=ResidMass_scaled, x=TotalRainFall3day))+
-  geom_point()+
-  geom_smooth(method="lm")+
-  facet_grid(~ThermoReg)
-
-
-ggplot(dat4 %>% filter(HatchDate<170), aes(y=ResidMass_scaled, x=HatchDate))+
-  geom_point()+
-  geom_smooth(method="lm")+
-  facet_grid(~ThermoReg)
-
-
 
 ##########################################################
 #############Does max temperature perdict residual mass?
@@ -137,7 +109,7 @@ plot(resid(mod1)~dat4$MaxTemp3day)
 plot(resid(mod1)~dat4$ThermoReg)
 plot(resid(mod1)~dat4$NestID)
 
-
+car::vif(mod1)
 summary(mod1)
 #Don't need nestling ID as a random effect
 
@@ -148,7 +120,7 @@ summary(mod2)
 
 mod3 <- lm(ResidMass_scaled ~ MaxTemp3day*ThermoReg, data=dat4, na.action = "na.fail")
 
-
+anova(mod3)
 dredge(mod3)
 
 mam_maxtemp <- lm(ResidMass_scaled ~ MaxTemp3day*ThermoReg, data=dat4)
@@ -156,61 +128,38 @@ summary(mam_maxtemp)
 
 
 
-##########################################################
-#############Does mean temperature perdict residual mass?
-mod1 <- lmer(ResidMass ~ MeanTemp3day*ThermoReg + (1|NestID/NestlingID), data=dat3, REML=FALSE)
-
-plot(mod1) #this is OK
-hist(resid(mod1)) #looks pretty good but there is a bit of a tail. 
-shapiro.test(resid(mod1)) #this very conservative test says we aren't fitting. I'm thinking I'll ignore it for now but maybe will need to deal with this. 
-plot(resid(mod1)~dat3$MeanTemp3day)
-plot(resid(mod1)~dat3$ThermoReg)
-plot(resid(mod1)~dat3$NestID)
-
-
-summary(mod1)
-#Don't need nestling ID
-
-mod2 <- lmer(ResidMass ~ MeanTemp3day*ThermoReg + (1|NestID), data=dat3, REML=FALSE)
-summary(mod2)
-#Should keep Nest ID as a random effect
-
-dredge(mod2)
-#Full model is easily the best predictor
-
-mam_meantemp <- lmer(ResidMass ~ MeanTemp3day*ThermoReg + (1|NestID), data=dat3, REML=FALSE)
-summary(mam_meantemp)
-#Increasing mean temp increases body mass for endotherms, doesn't do anything
-#for intermediates, and decreases it for poikilotherms.
-
 
 ##########################################################
 #############Does whether is rains or not predict residual mass?
-mod1 <- lmer(ResidMass ~ TotalRainFall3day*ThermoReg + (1|NestID/NestlingID), data=dat3, REML=FALSE)
+mod1 <- lmer(ResidMass_scaled ~ TotalRainFall3day*ThermoReg + (1|NestID/NestlingID), data=dat4, REML=FALSE)
 plot(mod1) #this is OK
 hist(resid(mod1)) #looks pretty good but there is a bit of a tail. 
 shapiro.test(resid(mod1)) #this very conservative test says we aren't fitting. I'm thinking I'll ignore it for now but maybe will need to deal with this. 
-plot(resid(mod1)~dat3$TotalRainFall3day)
-plot(resid(mod1)~dat3$ThermoReg)
-plot(resid(mod1)~dat3$NestID)
+plot(resid(mod1)~dat4$TotalRainFall3day)
+plot(resid(mod1)~dat4$ThermoReg)
+plot(resid(mod1)~dat4$NestID)
 
 summary(mod1)
 #Can drop the random nestling ID effect
 
-mod2 <- lmer(ResidMass ~ TotalRainFall3day*ThermoReg + (1|NestID), data=dat3, REML=FALSE)
+mod2 <- lmer(ResidMass_scaled ~ TotalRainFall3day*ThermoReg + (1|NestID), data=dat4, REML=FALSE)
 summary(mod2)
-#Should keep the nestID effect
+#Should not keep the nestID effect
 
-dredge(mod2)
+mod3 <- lm(ResidMass_scaled ~ TotalRainFall3day*ThermoReg, data=dat4)
+
+
+dredge(mod3)
+anova(mod3)
 #Best model is the full model. However, with delta=1.97 is the much simpler just total precipitation
 
-mam_rain <- lmer(ResidMass ~ TotalRainFall3day*ThermoReg + (1|NestID), data=dat3, REML=FALSE)
+mam_rain <- lm(ResidMass_scaled ~ TotalRainFall3day*ThermoReg, data=dat4)
 summary(mam_rain)
 anova(mam_rain)
 
 ##########################################################
 #############Does meanwindspeed predict residual mass?
-mod1 <- lmer(ResidMass ~ MeanWindspeed3day*ThermoReg + (1|NestID/NestlingID), data=dat3, REML=FALSE)
+mod1 <- lmer(ResidMass_scaled ~ MeanWindspeed3day*ThermoReg + (1|NestID/NestlingID), data=dat4, REML=FALSE)
 plot(mod1) #this is OK
 hist(resid(mod1)) #looks pretty good but there is a bit of a tail. 
 shapiro.test(resid(mod1)) #this very conservative test says we aren't fitting. I'm thinking I'll ignore it for now but maybe will need to deal with this. 
@@ -221,19 +170,47 @@ plot(resid(mod1)~dat3$NestID)
 summary(mod1)
 #Good to drop the nestling ID random effect
 
-mod2 <- lmer(ResidMass ~ MeanWindspeed3day*ThermoReg + (1|NestID), data=dat3, REML=FALSE)
+mod2 <- lmer(ResidMass_scaled ~ MeanWindspeed3day*ThermoReg + (1|NestID), data=dat4, REML=FALSE)
 summary(mod2)
-#need to keep the NestID random effect
+#don't need to keep the NestID random effect
 
-dredge(mod2)
+mod3 <- lm(ResidMass_scaled ~ MeanWindspeed3day*ThermoReg, data=dat4)
 
-mam_windspeed <- lmer(ResidMass ~ MeanWindspeed3day + (1|NestID), data=dat3, REML=FALSE)
+
+dredge(mod3)
+anova(mod3)
+
+mam_windspeed <- lmer(ResidMass ~ MeanWindspeed3day*ThermoReg + (1|NestID), data=dat3, REML=FALSE)
 summary(mam_windspeed)
+
+
+
+
+##Rank all 3 of the models based on AICc and R^2
+
+
+AICc(mam_maxtemp, mam_rain, mam_windspeed)
+#Based on AICc, rainfall is EASILLY the best predictor. Like by so so so much. I think I will just make that plot. 
+
+
+
+
+ggplot(dat4, aes(x=TotalRainFall3day, y=ResidMass_scaled))+
+  geom_point()+
+  geom_smooth(method="lm", color="black")+
+  facet_grid(~factor(ThermoReg, levels=c("Poikilotherm", "Intermediate", "Endotherm")))+
+  theme_classic(base_size = 12, base_family = "serif")+
+  labs(x="Rain in preceeding three days (mm)", y="Residual body mass")
+
+
+
+
 
 
 ########################################################## Does the combination
 #############of weather variables (PC1 and PC2) predict residual mass better
 #############than any one alone?
+
 mod1 <- lmer(ResidMass_scaled ~ PC13day*ThermoReg+ PC23day*ThermoReg + (1|NestID/NestlingID), data=dat4, REML=FALSE)
 plot(mod1)
 hist(resid(mod1)) #looks pretty good but there is a bit of a tail. 
@@ -256,6 +233,7 @@ mod3 <- lm(ResidMass_scaled ~ PC13day*ThermoReg+ PC23day*ThermoReg, data=dat4)
 dredge(mod3)
 anova(mod3)
 
+dat4$ThermoReg <- factor(dat4$ThermoReg, levels=c("Poikilotherm", "Intermediate", "Endotherm"))
 
 dat3$ThermoReg <- factor(dat3$ThermoReg, levels=c("Poikilotherm", "Endotherm", "Intermediate"))
 dat3$ThermoReg <- factor(dat3$ThermoReg, levels=c(  "Intermediate", "Poikilotherm","Endotherm"))
@@ -402,11 +380,11 @@ ggsave(filename="~/Masters Thesis Project/NACCB Conference/Presentation Figures/
 #it's only when you are able to include the interaction with thermoreg that we
 #even really expect to see something interesting.
 
-cor(dat3[,c(20,22,23)])
+cor(dat4[,c(20,22,23)])
 #corelations between total rainfall and temp, and rain and wind are pretty
 #strong. Wind and temp don't correlate.
 
-
+dat3$TotalRainFall3day_2 <- ifelse(dat3$TotalRainFall3day>0, 1, 0)
 
 mod1 <- lmer(ResidMass ~ TotalRainFall3day*ThermoReg+ + MaxTemp3day*ThermoReg + MeanWindspeed3day*ThermoReg + (1|NestID/NestlingID), data=dat3, REML=FALSE)
 summary(mod1)
@@ -420,6 +398,8 @@ plot(resid(mod1)~dat3$MeanWindspeed3day)
 plot(resid(mod1)~dat3$ThermoReg)
 plot(resid(mod1)~dat3$NestID)
 plot(resid(mod1)~dat3$NestlingID)
+
+car::vif(mod1)
 
 #This looks fine. Drop the nestling ID beccause variance smaller than SD
 

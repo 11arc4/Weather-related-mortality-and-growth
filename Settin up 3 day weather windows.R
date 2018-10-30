@@ -12,6 +12,11 @@ names(weather)[5:11] <-  c("MaxTemp", "MinTemp", "MeanTemp", "HeatDegDays", "Coo
 #It's better to drop min and max windspeed so that the loadings for total rain
 #is better (before it's not on the top 2 PC because there were more wind and temp variables than rain)
 weatherVar2 <- weather[,c(5:7, 10, 12)]  
+weatherVar2 <- weatherVar2 %>% mutate(Rain= ifelse(TotalRain>0, 1, 0))
+
+ggplot(weatherVar2, aes(x=as.factor(Rain), y=meanwindspeed))+
+  geom_boxplot()+
+  geom_point()
 
 weather.pca <- prcomp(weatherVar2, 
                       center=T, 
@@ -19,6 +24,9 @@ weather.pca <- prcomp(weatherVar2,
 
 plot(weather.pca, type="lines")
 summary(weather.pca)
+
+
+cor(weatherVar2)
 
 
 

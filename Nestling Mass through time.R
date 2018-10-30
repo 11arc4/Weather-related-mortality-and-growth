@@ -36,13 +36,23 @@ ggplot(dat2 %>% filter(age>=10), aes(x=age, y=mass))+
 #nature of the data. Instead, perhaps it's better to only look at the last
 #measurements (day 10 and on), when they are closer to fledging. I used only one
 #measurement per nestling (the one closest to 12 days old)
-dat3 <- dat2 %>% filter(!is.na(year) & !is.na(age) & age>9 & age<=16 ) %>% group_by(nestlingID) %>% slice(which.min(abs(age)-12))
-
 dat3 <- dat2 %>% 
   filter(!is.na(year) & !is.na(age) & age>9 & age<=16 ) %>% 
-  group_by(nestID,year) %>% 
-  summarise(age = mean(age[which(table(age) == max(table(age)))[1]]), 
-            mmass= mean(mass[which(table(age) == max(table(age)))[1]]))
+  group_by(nestlingID) %>%
+  slice(which.min(abs(age)-12)) %>% 
+  mutate(year2 =(year-1977)/10, 
+         age2=age-10)
+
+dat4 <- dat2 %>% 
+  filter(!is.na(year) & !is.na(age) & age>9 & age<=16 ) %>%
+  group_by(nestlingID) %>%
+  slice(which.min(abs(age)-12))%>%
+  group_by(nestID, year) %>%
+  summarise(mmass=mean(mass), 
+            age=mean(age)) %>%
+  mutate(year2 =(year-1977)/10, 
+         age2=age-10)
+  
 
 
 
@@ -52,16 +62,30 @@ ggplot(dat3, aes(x=age, y=mass))+
   geom_point()+
   geom_smooth(method="lm", formula=y~x)
 
-dat3$year2 <- (dat3$year-1977)/10
-dat3$age2 <- dat3$age-10
-dat3$age2 <- dat3$age-15
 
 
+#The problem for the temporal autocorrelation is that it's unclear WHAT to
+#temporally autocorrelate. (e.g. it knows that it can't temporally
+#autocorrelate nests because they only show up within one year but it's unclear)
 
-mod1 <- lmer(mass~age*year2 + (1|nestID) + (1|nestlingID), data=dat3, na.action="na.fail")
+mod1 <- lmer(mass~age*year2 + (1|nestID), data=dat3, na.action="na.fail")
+mod1 <- lme(mass~age*year2, 
+            random=~1|nestID,
+            data=dat3,
+            na.action="na.fail")
+dat3$res <- residuals(mod1, type = "response")
 
-mod1 <- lm(mmass ~age* year2, data=dat3, 
-            na.action=na.omit)
+dat4 <- dat3 %>% mutate(epsilon = lag(res)) 
+summary(mod1)
+plot(ACF(mod1))
+
+
+mod1 <- lme(mass~age*year2+epsilon, 
+            random=~1|nestID,
+            data=dat3,
+            na.action="na.fail")
+
+
 plot(mod1)
 qqnorm(mod1)
 hist(resid(mod1))
@@ -76,11 +100,20 @@ dredge(mod)
 anova(mod, test="F")
 
 
-mod1_c <- lme(mmass ~age* year2, data=dat3, 
-              correlation = corAR1(form=~year2),
-              na.action=na.omit)
+mod1_c <- lme(mass~age*year2, 
+              random=~1|nestID,
+              correlation = corAR1(form=~year2|nestID), #CAN"T have a crouping because there's nothing
+              data=dat3,
+              na.action="na.fail")
+  
 
-qqnorm(mod1_c)
+
+mod1_c <- gls(mmass~age*year2, 
+              correlation = corCAR1(form=~year2), #CAN"T have a crouping because there's nothing
+              data=dat4,
+              na.action="na.fail")
+
+
 #We should keep all terms
 
 AICc(mod1, mod1_c) #Better not to have the correlation structure. 
